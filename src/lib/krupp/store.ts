@@ -28,6 +28,9 @@ interface KruppState {
   setSubTab(desk: number, i: number): void;
   select(key: string, sym: string): void;
   toggleFav(t: number): void;
+  /** reorder the pinned-desk quick rail: move tab `from` to the position of
+   *  tab `to` inside the favs order (drag & drop persistence) */
+  moveFav(from: number, to: number): void;
   /** wipe all persisted workspace state (pins / sub-tabs / selections) and
    *  return to the LONDON EDGE landing tab — layout factory reset */
   resetWorkspace(): void;
@@ -90,6 +93,18 @@ export const useKrupp = create<KruppState>()((set, get) => ({
     set((s) => ({
       favs: s.favs.includes(t) ? s.favs.filter((f) => f !== t) : [...s.favs, t],
     }));
+    persistWorkspace(get());
+  },
+  moveFav: (from, to) => {
+    set((s) => {
+      const i = s.favs.indexOf(from);
+      const j = s.favs.indexOf(to);
+      if (i === -1 || j === -1 || i === j) return s;
+      const favs = [...s.favs];
+      favs.splice(i, 1);
+      favs.splice(j, 0, from);
+      return { favs };
+    });
     persistWorkspace(get());
   },
   resetWorkspace: () => {

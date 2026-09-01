@@ -20,7 +20,7 @@ const WORKSPACE_KEYS: Array<{ keys: string[]; action: string; tone: keyof typeof
   { keys: ['F'], action: 'Pin / unpin the active desk (★ persists)', tone: 'warn' },
   { keys: ['V'], action: 'Flip colourline — MK-II NAVY ↔ HFT MATRIX', tone: 'accent' },
   { keys: ['?'], action: 'This workspace reference card', tone: 'accent' },
-  { keys: ['⌘', 'K'], action: 'London desk command palette (landing terminal)', tone: 'muted' },
+  { keys: ['⌘', 'K'], action: 'Workspace command palette on the 13 desks (landing keeps its own)', tone: 'accent' },
 ];
 
 const TONE_MAP = {
@@ -39,7 +39,7 @@ const STEERING_LINES: string[] = [
   'SIMULATE MARKET LIQUIDITY CRASH (footer) injects a multi-stage liquidity cascade; the lockdown overlay, interceptor chain and auto-recovery countdown take over until the cycle decays.',
   'Interceptor chips — BLOCK MEAN REVERSION / REDUCE SIZE / EMERGENCY FLATTENING engage on a staged schedule once the cascade is live; click to arm or disarm manually.',
   'Colourline switch (header) re-renders every desk and chart against the other palette; the choice persists across reloads and the market engine never misses a tick during the cut-over.',
-  '★ pins persist per desk — hover a tab and click the star (or press F while the desk is active) to build your own quick-access rail in the footer.',
+  '★ pins persist per desk — hover a tab and click the star (or press F while the desk is active) to build your own quick-access rail in the footer; DRAG the rail chips to reorder them, the order is saved with the workspace.',
 ];
 
 export function WorkspaceHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {

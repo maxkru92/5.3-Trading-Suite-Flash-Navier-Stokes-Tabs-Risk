@@ -13,11 +13,7 @@
  * against the new palette; module-scope engines keep running uninterrupted.
  */
 import { useEffect, useRef, useState } from 'react';
-import {
-  Activity, Sigma, TrendingUp, Landmark, Coins, Flame, DollarSign,
-  Building2, Layers, Droplets, Bitcoin, Radar, ServerCog,
-  TriangleAlert, ShieldCheck, Zap,
-} from 'lucide-react';
+import { TriangleAlert, ShieldCheck, Star } from 'lucide-react';
 import { bootstrapKrupp, ms, startCrisis, endCrisis } from '@/lib/krupp/engine';
 import { infra } from '@/lib/krupp/infraservice';
 import { useKrupp, useRevision } from '@/lib/krupp/store';
@@ -26,51 +22,8 @@ import { hydrateTheme, useTheme, THEMES } from '@/lib/theme';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { CrisisOverlay } from './CrisisOverlay';
 import { WorkspaceHelp } from './WorkspaceHelp';
-import LondonEdge from '@/components/london/LondonEdge';
-import Desk01Volatility from './desks/Desk01Volatility';
-import Desk02Options from './desks/Desk02Options';
-import Desk03IndexFutures from './desks/Desk03IndexFutures';
-import Desk04Bonds from './desks/Desk04Bonds';
-import Desk05Metals from './desks/Desk05Metals';
-import Desk06Energies from './desks/Desk06Energies';
-import Desk07Fx from './desks/Desk07Fx';
-import Desk08Stocks from './desks/Desk08Stocks';
-import Desk09Etf from './desks/Desk09Etf';
-import Desk10Liquidity from './desks/Desk10Liquidity';
-import Desk11Crypto from './desks/Desk11Crypto';
-import Desk12StatArb from './desks/Desk12StatArb';
-import Desk13Infra from './desks/Desk13Infra';
-import { Star } from 'lucide-react';
-
-type TabDef = {
-  label: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  accent: string;
-  bar: string;
-  Comp: React.ComponentType;
-  deskNo?: number; // 1..13 for the 13-desk matrix; undefined for the landing terminal
-};
-
-const TABS: TabDef[] = [
-  {
-    label: 'LONDON EDGE', icon: Zap,
-    accent: 'text-kaccent-soft', bar: 'bg-kaccent',
-    Comp: LondonEdge,
-  },
-  { label: 'VOL COMPLEX', icon: Activity, accent: 'text-kaccent-soft', bar: 'bg-kaccent', Comp: Desk01Volatility, deskNo: 1 },
-  { label: 'OPTIONS & RISK', icon: Sigma, accent: 'text-violet-300', bar: 'bg-violet-400', Comp: Desk02Options, deskNo: 2 },
-  { label: 'INDEX FUTURES', icon: TrendingUp, accent: 'text-emerald-300', bar: 'bg-emerald-400', Comp: Desk03IndexFutures, deskNo: 3 },
-  { label: 'BOND FUTURES', icon: Landmark, accent: 'text-amber-300', bar: 'bg-amber-400', Comp: Desk04Bonds, deskNo: 4 },
-  { label: 'METALS', icon: Coins, accent: 'text-yellow-300', bar: 'bg-yellow-400', Comp: Desk05Metals, deskNo: 5 },
-  { label: 'ENERGIES', icon: Flame, accent: 'text-orange-300', bar: 'bg-orange-400', Comp: Desk06Energies, deskNo: 6 },
-  { label: 'FX FUTURES', icon: DollarSign, accent: 'text-teal-300', bar: 'bg-teal-400', Comp: Desk07Fx, deskNo: 7 },
-  { label: 'STOCKS', icon: Building2, accent: 'text-kaccent-soft', bar: 'bg-kaccent', Comp: Desk08Stocks, deskNo: 8 },
-  { label: 'SPDR & MACRO ETF', icon: Layers, accent: 'text-violet-300', bar: 'bg-violet-400', Comp: Desk09Etf, deskNo: 9 },
-  { label: 'CENTRAL BANK LIQ', icon: Droplets, accent: 'text-emerald-300', bar: 'bg-emerald-400', Comp: Desk10Liquidity, deskNo: 10 },
-  { label: 'CRYPTO L3 MBO', icon: Bitcoin, accent: 'text-amber-300', bar: 'bg-amber-400', Comp: Desk11Crypto, deskNo: 11 },
-  { label: 'STAT ARB & SPREADS', icon: Radar, accent: 'text-rose-300', bar: 'bg-rose-400', Comp: Desk12StatArb, deskNo: 12 },
-  { label: 'SYSTEM INFRA', icon: ServerCog, accent: 'text-zinc-300', bar: 'bg-zinc-400', Comp: Desk13Infra, deskNo: 13 },
-];
+import { WorkspacePalette } from './WorkspacePalette';
+import { TABS } from './tabs';
 
 function UtcClock(): React.ReactElement {
   const [t, setT] = useState<number>(() => Date.now());
@@ -163,6 +116,8 @@ export default function Shell() {
   const setActiveTab = useKrupp((s) => s.setActiveTab);
   const favs = useKrupp((s) => s.favs);
   const toggleFav = useKrupp((s) => s.toggleFav);
+  const moveFav = useKrupp((s) => s.moveFav);
+  const [dragFav, setDragFav] = useState<number | null>(null);
   useRevision(); // 5 Hz re-render of status surfaces
 
   /* ---- colourline cut-over flash (rendered OUTSIDE the keyed workspace) ---- */
@@ -176,15 +131,26 @@ export default function Shell() {
   }, [theme]);
 
   /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
-         F pin/unpin active desk · V colourline · ? workspace map (desks only —
-         the LONDON EDGE tab routes plain keys + ? to its own terminal: 1/2/3
-         symbols, C crash, R reset, T engage, ? HotkeyHelp) ---- */
+         F pin/unpin active desk · V colourline · ? workspace map · ⌘K palette
+         (desks only — the LONDON EDGE tab routes plain keys + ? + ⌘K to its
+         own terminal: 1/2/3 symbols, C crash, R reset, T engage, ? HotkeyHelp,
+         ⌘K desk palette) ---- */
   const [helpOpen, setHelpOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        // on desks the workspace palette owns ⌘K; the landing terminal
+        // (LondonEdge) keeps its own palette — both listeners never coexist
+        if (activeTab !== 0) {
+          e.preventDefault();
+          setPaletteOpen((o) => !o);
+        }
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key.toLowerCase() === 'v') {
         e.preventDefault();
@@ -254,6 +220,13 @@ export default function Shell() {
       >
       <CrisisOverlay />
       <WorkspaceHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      {tab.deskNo !== undefined && (
+        <WorkspacePalette
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+          onRequestHelp={() => setHelpOpen(true)}
+        />
+      )}
 
       {/* ------------- header (hidden on print while the LONDON EDGE A4 report owns the paper) ------------- */}
       <header className={`sticky top-0 z-40 border-b border-kborder bg-kheader/95 backdrop-blur ${tab.deskNo === undefined ? 'print:hidden' : ''}`}>
@@ -386,7 +359,7 @@ export default function Shell() {
             </button>
           )}
 
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <div className="ml-auto flex w-full flex-wrap items-center justify-center gap-1.5 sm:w-auto sm:justify-end">
             <InterceptorChip
               name="Block Mean Reversion"
               engaged={engaging(400) && ms.interceptors.blockMR}
@@ -424,29 +397,56 @@ export default function Shell() {
               <kbd className="kbd-hint">F</kbd> PIN
               <kbd className="kbd-hint">V</kbd> COLOURLINE
               {activeTab !== 0 && (
-                <button
-                  onClick={() => setHelpOpen(true)}
-                  title="Workspace hotkey map & layout reset"
-                  className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
-                >
-                  <kbd className="kbd-hint">?</kbd> HELP
-                </button>
+                <>
+                  <button
+                    onClick={() => setPaletteOpen((o) => !o)}
+                    title="Workspace command palette — navigate, colourline, exports, crisis"
+                    className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+                  >
+                    <kbd className="kbd-hint">⌘K</kbd> COMMANDS
+                  </button>
+                  <button
+                    onClick={() => setHelpOpen(true)}
+                    title="Workspace hotkey map & layout reset"
+                    className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+                  >
+                    <kbd className="kbd-hint">?</kbd> HELP
+                  </button>
+                </>
               )}
             </span>
-            {/* pinned-desk quick rail — click to jump */}
+            {/* pinned-desk quick rail — click to jump, DRAG to reorder */}
             {favs.length > 0 && (
               <span className="hidden items-center gap-1 xl:flex" aria-label="Pinned desks">
                 <span className="h-2.5 w-px bg-kborder2" aria-hidden />
                 <Star size={8} className="text-amber-300" aria-hidden />
-                {favs.map((i) => (
+                {favs.map((i, pos) => (
                   <button
                     key={i}
                     onClick={() => setActiveTab(i)}
-                    title={`Jump to desk ${String(i).padStart(2, '0')} — ${TABS[i]?.label ?? ''}`}
-                    className={`rounded-sm border px-1 font-mono text-[8.5px] font-bold tracking-wider outline-none transition-colors focus-visible:ring-1 focus-visible:ring-kaccent/70 ${
-                      i === activeTab
-                        ? 'border-amber-400/80 bg-amber-400/15 text-amber-200'
-                        : 'border-amber-400/25 bg-amber-400/5 text-amber-300/70 hover:border-amber-400/60 hover:text-amber-200'
+                    draggable
+                    onDragStart={(e) => {
+                      setDragFav(i);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', String(i));
+                    }}
+                    onDragOver={(e) => {
+                      if (dragFav !== null && dragFav !== i) e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                      if (!Number.isNaN(from) && from !== i) moveFav(from, i);
+                      setDragFav(null);
+                    }}
+                    onDragEnd={() => setDragFav(null)}
+                    title={`Jump to desk ${String(i).padStart(2, '0')} — ${TABS[i]?.label ?? ''} · drag to reorder (slot ${pos + 1})`}
+                    className={`cursor-grab rounded-sm border px-1 font-mono text-[8.5px] font-bold tracking-wider outline-none transition-all focus-visible:ring-1 focus-visible:ring-kaccent/70 active:cursor-grabbing ${
+                      dragFav === i
+                        ? 'scale-110 border-amber-300 bg-amber-400/25 text-amber-100 shadow-[0_0_10px_rgba(252,211,77,0.5)]'
+                        : i === activeTab
+                          ? 'border-amber-400/80 bg-amber-400/15 text-amber-200'
+                          : 'border-amber-400/25 bg-amber-400/5 text-amber-300/70 hover:border-amber-400/60 hover:text-amber-200'
                     }`}
                   >
                     {String(i).padStart(2, '0')}

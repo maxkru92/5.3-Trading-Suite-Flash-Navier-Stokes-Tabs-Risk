@@ -1,0 +1,12 @@
+{
+  "name": "krupp-stream",
+  "version": "2.4.1",
+  "private": true,
+  "description": "KRUPP CAPITAL // LSE Strategic Edge ingestion + CBOE volatility collector + L3 parity feed (socket.io)",
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
+}

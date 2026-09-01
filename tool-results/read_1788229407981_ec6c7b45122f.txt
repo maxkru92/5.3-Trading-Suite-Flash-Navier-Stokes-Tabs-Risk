@@ -1,0 +1,747 @@
+     1→@import "tailwindcss";
+     2→@import "tw-animate-css";
+     3→
+     4→@custom-variant dark (&:is(.dark *));
+     5→
+     6→@theme inline {
+     7→  --color-background: var(--background);
+     8→  --color-foreground: var(--foreground);
+     9→  --font-sans: var(--font-geist-sans);
+    10→  --font-mono: var(--font-geist-mono);
+    11→  --color-sidebar-ring: var(--sidebar-ring);
+    12→  --color-sidebar-border: var(--sidebar-border);
+    13→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    14→  --color-sidebar-accent: var(--sidebar-accent);
+    15→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    16→  --color-sidebar-primary: var(--sidebar-primary);
+    17→  --color-sidebar-foreground: var(--sidebar-foreground);
+    18→  --color-sidebar: var(--sidebar);
+    19→  --color-chart-5: var(--chart-5);
+    20→  --color-chart-4: var(--chart-4);
+    21→  --color-chart-3: var(--chart-3);
+    22→  --color-chart-2: var(--chart-2);
+    23→  --color-chart-1: var(--chart-1);
+    24→  --color-ring: var(--ring);
+    25→  --color-input: var(--input);
+    26→  --color-border: var(--border);
+    27→  --color-destructive: var(--destructive);
+    28→  --color-accent-foreground: var(--accent-foreground);
+    29→  --color-accent: var(--accent);
+    30→  --color-muted-foreground: var(--muted-foreground);
+    31→  --color-muted: var(--muted);
+    32→  --color-secondary-foreground: var(--secondary-foreground);
+    33→  --color-secondary: var(--secondary);
+    34→  --color-primary-foreground: var(--primary-foreground);
+    35→  --color-primary: var(--primary);
+    36→  --color-popover-foreground: var(--popover-foreground);
+    37→  --color-popover: var(--popover);
+    38→  --color-card-foreground: var(--card-foreground);
+    39→  --color-card: var(--card);
+    40→  --radius-sm: calc(var(--radius) - 4px);
+    41→  --radius-md: calc(var(--radius) - 2px);
+    42→  --radius-lg: var(--radius);
+    43→  --radius-xl: calc(var(--radius) + 4px);
+    44→  /* KRUPP TERMINAL TOKENS */
+    45→  --color-void: #020202;
+    46→  --color-matrix: #08080c;
+    47→  --color-gridline: #1a1a24;
+    48→  --color-hft: #00ff66;
+    49→  --color-warn: #ff8800;
+    50→  --color-crimson: #ff1133;
+    51→  --color-cyber: #00e5ff;
+    52→}
+    53→
+    54→:root {
+    55→  --radius: 0.25rem;
+    56→  /* KRUPP DARK INSTITUTIONAL — always-dark terminal */
+    57→  --background: #020202;
+    58→  --foreground: #d8ffe9;
+    59→  --card: #08080c;
+    60→  --card-foreground: #d8ffe9;
+    61→  --popover: #0a0a10;
+    62→  --popover-foreground: #d8ffe9;
+    63→  --primary: #00ff66;
+    64→  --primary-foreground: #021207;
+    65→  --secondary: #101018;
+    66→  --secondary-foreground: #b8c9c0;
+    67→  --muted: #0e0e14;
+    68→  --muted-foreground: #5c6b64;
+    69→  --accent: #101018;
+    70→  --accent-foreground: #d8ffe9;
+    71→  --destructive: #ff1133;
+    72→  --border: #1a1a24;
+    73→  --input: #14141c;
+    74→  --ring: #00ff6644;
+    75→  --chart-1: #00ff66;
+    76→  --chart-2: #00e5ff;
+    77→  --chart-3: #ff8800;
+    78→  --chart-4: #ff1133;
+    79→  --chart-5: #9d00ff;
+    80→  --sidebar: #08080c;
+    81→  --sidebar-foreground: #d8ffe9;
+    82→  --sidebar-primary: #00ff66;
+    83→  --sidebar-primary-foreground: #021207;
+    84→  --sidebar-accent: #101018;
+    85→  --sidebar-accent-foreground: #d8ffe9;
+    86→  --sidebar-border: #1a1a24;
+    87→  --sidebar-ring: #00ff6644;
+    88→}
+    89→
+    90→.dark {
+    91→  --background: #020202;
+    92→  --foreground: #d8ffe9;
+    93→}
+    94→
+    95→@layer base {
+    96→  * {
+    97→    @apply border-border outline-ring/50;
+    98→  }
+    99→  body {
+   100→    @apply bg-background text-foreground;
+   101→    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+   102→    font-variant-numeric: tabular-nums;
+   103→    letter-spacing: 0.01em;
+   104→  }
+   105→}
+   106→
+   107→/* ============================== KRUPP TERMINAL ============================== */
+   108→
+   109→.krupp-root {
+   110→  background-color: #020202;
+   111→  background-image:
+   112→    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 255, 102, 0.045), transparent),
+   113→    linear-gradient(rgba(26, 26, 36, 0.55) 1px, transparent 1px),
+   114→    linear-gradient(90deg, rgba(26, 26, 36, 0.55) 1px, transparent 1px);
+   115→  background-size: 100% 100%, 44px 44px, 44px 44px;
+   116→}
+   117→
+   118→.krupp-panel {
+   119→  background: linear-gradient(180deg, rgba(12, 12, 18, 0.92), rgba(6, 6, 10, 0.96));
+   120→  border: 1px solid #1a1a24;
+   121→  border-radius: 2px;
+   122→  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 0 0 1px rgba(0, 0, 0, 0.6);
+   123→  position: relative;
+   124→  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+   125→}
+   126→.krupp-panel:hover {
+   127→  border-color: rgba(0, 255, 102, 0.22);
+   128→  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 0 18px rgba(0, 255, 102, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.6);
+   129→}
+   130→
+   131→/* tactical corner brackets */
+   132→.krupp-panel::before,
+   133→.krupp-panel::after {
+   134→  content: '';
+   135→  position: absolute;
+   136→  width: 9px;
+   137→  height: 9px;
+   138→  pointer-events: none;
+   139→  opacity: 0.55;
+   140→  transition: opacity 0.25s ease;
+   141→}
+   142→.krupp-panel::before {
+   143→  top: -1px;
+   144→  left: -1px;
+   145→  border-top: 1px solid rgba(0, 255, 102, 0.7);
+   146→  border-left: 1px solid rgba(0, 255, 102, 0.7);
+   147→}
+   148→.krupp-panel::after {
+   149→  bottom: -1px;
+   150→  right: -1px;
+   151→  border-bottom: 1px solid rgba(0, 255, 102, 0.7);
+   152→  border-right: 1px solid rgba(0, 255, 102, 0.7);
+   153→}
+   154→.krupp-panel:hover::before,
+   155→.krupp-panel:hover::after { opacity: 1; }
+   156→
+   157→.krupp-panel-head {
+   158→  border-bottom: 1px solid #1a1a24;
+   159→  background: linear-gradient(90deg, rgba(0, 255, 102, 0.05), transparent 55%);
+   160→}
+   161→
+   162→.krupp-scanline {
+   163→  pointer-events: none;
+   164→  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px);
+   165→}
+   166→
+   167→.text-glow-green { text-shadow: 0 0 6px rgba(0, 255, 102, 0.65), 0 0 22px rgba(0, 255, 102, 0.22); }
+   168→.text-glow-cyan { text-shadow: 0 0 6px rgba(0, 229, 255, 0.7), 0 0 22px rgba(0, 229, 255, 0.25); }
+   169→.text-glow-orange { text-shadow: 0 0 6px rgba(255, 136, 0, 0.7), 0 0 20px rgba(255, 136, 0, 0.25); }
+   170→.text-glow-red { text-shadow: 0 0 7px rgba(255, 17, 51, 0.8), 0 0 26px rgba(255, 17, 51, 0.32); }
+   171→
+   172→.glow-box-green { box-shadow: 0 0 12px rgba(0, 255, 102, 0.28), inset 0 0 8px rgba(0, 255, 102, 0.06); }
+   173→.glow-box-cyan { box-shadow: 0 0 14px rgba(0, 229, 255, 0.35), inset 0 0 10px rgba(0, 229, 255, 0.08); }
+   174→.glow-box-orange { box-shadow: 0 0 12px rgba(255, 136, 0, 0.3), inset 0 0 8px rgba(255, 136, 0, 0.07); }
+   175→.glow-box-red { box-shadow: 0 0 16px rgba(255, 17, 51, 0.4), inset 0 0 10px rgba(255, 17, 51, 0.1); }
+   176→
+   177→/* ---------- animations ---------- */
+   178→@keyframes krupp-flash-red {
+   179→  0%, 100% { background-color: rgba(255, 17, 51, 0.16); border-color: rgba(255, 17, 51, 0.85); }
+   180→  50% { background-color: rgba(255, 17, 51, 0.42); border-color: rgba(255, 17, 51, 1); }
+   181→}
+   182→.anim-flash-red { animation: krupp-flash-red 0.72s steps(2, jump-none) infinite; }
+   183→
+   184→@keyframes krupp-pulse-orange {
+   185→  0%, 100% { box-shadow: 0 0 6px rgba(255, 136, 0, 0.35); opacity: 1; }
+   186→  50% { box-shadow: 0 0 22px rgba(255, 136, 0, 0.75); opacity: 0.86; }
+   187→}
+   188→.anim-pulse-orange { animation: krupp-pulse-orange 1.3s ease-in-out infinite; }
+   189→
+   190→@keyframes krupp-glow-green {
+   191→  0%, 100% { box-shadow: 0 0 4px rgba(0, 255, 102, 0.3); }
+   192→  50% { box-shadow: 0 0 18px rgba(0, 255, 102, 0.65); }
+   193→}
+   194→.anim-glow-green { animation: krupp-glow-green 2.2s ease-in-out infinite; }
+   195→
+   196→@keyframes krupp-blink {
+   197→  0%, 100% { opacity: 1; }
+   198→  50% { opacity: 0.25; }
+   199→}
+   200→.anim-blink { animation: krupp-blink 1s steps(2, jump-none) infinite; }
+   201→.anim-blink-fast { animation: krupp-blink 0.42s steps(2, jump-none) infinite; }
+   202→
+   203→@keyframes krupp-sweep {
+   204→  0% { transform: translateX(-100%); }
+   205→  100% { transform: translateX(320%); }
+   206→}
+   207→.anim-sweep { animation: krupp-sweep 2.8s linear infinite; }
+   208→
+   209→@keyframes krupp-ticker-flash {
+   210→  0% { background-color: rgba(0, 255, 102, 0.35); }
+   211→  100% { background-color: transparent; }
+   212→}
+   213→.flash-green { animation: krupp-ticker-flash 0.5s ease-out; }
+   214→@keyframes krupp-ticker-flash-r {
+   215→  0% { background-color: rgba(255, 17, 51, 0.35); }
+   216→  100% { background-color: transparent; }
+   217→}
+   218→.flash-red { animation: krupp-ticker-flash-r 0.5s ease-out; }
+   219→
+   220→@keyframes krupp-boot-cursor { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+   221→.boot-cursor { animation: krupp-boot-cursor 0.7s steps(1) infinite; }
+   222→
+   223→/* price/quote change flashes (one-shot, re-triggered via key) */
+   224→@keyframes krupp-up { 0% { background-color: rgba(0,255,102,0.30); } 100% { background-color: transparent; } }
+   225→@keyframes krupp-dn { 0% { background-color: rgba(255,17,51,0.30); } 100% { background-color: transparent; } }
+   226→.tick-up { animation: krupp-up 0.55s ease-out; }
+   227→.tick-dn { animation: krupp-dn 0.55s ease-out; }
+   228→
+   229→/* palette hotkey hint kbd */
+   230→.kbd-hint {
+   231→  font-family: var(--font-geist-mono), ui-monospace, monospace;
+   232→  font-size: 9px;
+   233→  padding: 1px 4px;
+   234→  border: 1px solid #1a1a24;
+   235→  border-bottom-width: 2px;
+   236→  border-radius: 3px;
+   237→  background: #0b0b12;
+   238→  color: #8fa39a;
+   239→}
+   240→
+   241→/* ---------- terminal scrollbar ---------- */
+   242→.krupp-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+   243→.krupp-scroll::-webkit-scrollbar-track { background: #050508; }
+   244→.krupp-scroll::-webkit-scrollbar-thumb { background: #1f2a24; border-radius: 0; }
+   245→.krupp-scroll::-webkit-scrollbar-thumb:hover { background: #00ff6655; }
+   246→.krupp-scroll { scrollbar-width: thin; scrollbar-color: #1f2a24 #050508; }
+   247→
+   248→/* ---------- order book bars ---------- */
+   249→.book-bar-ask {
+   250→  background: linear-gradient(90deg, rgba(255, 17, 51, 0.72), rgba(255, 17, 51, 0.16));
+   251→}
+   252→.book-bar-bid {
+   253→  background: linear-gradient(90deg, rgba(0, 255, 102, 0.7), rgba(0, 255, 102, 0.14));
+   254→}
+   255→
+   256→/* ---------- LED ---------- */
+   257→.led {
+   258→  width: 7px; height: 7px; border-radius: 9999px; display: inline-block;
+   259→}
+   260→.led-green { background: #00ff66; box-shadow: 0 0 7px rgba(0, 255, 102, 0.9); }
+   261→.led-orange { background: #ff8800; box-shadow: 0 0 7px rgba(255, 136, 0, 0.9); }
+   262→.led-red { background: #ff1133; box-shadow: 0 0 8px rgba(255, 17, 51, 1); }
+   263→.led-cyan { background: #00e5ff; box-shadow: 0 0 7px rgba(0, 229, 255, 0.9); }
+   264→.led-dim { background: #2a2a34; box-shadow: none; }
+   265→
+   266→/* reduced motion respect */
+   267→@media (prefers-reduced-motion: reduce) {
+   268→  .anim-flash-red, .anim-pulse-orange, .anim-glow-green, .anim-blink, .anim-blink-fast, .anim-sweep,
+   269→  .row-in-cyan, .row-in-orange { animation: none; }
+   270→}
+   271→
+   272→/* ---------- blotter row slide-in (newest ticket only) ---------- */
+   273→@keyframes krupp-row-in-cyan {
+   274→  0% { opacity: 0; transform: translateX(10px); background-color: rgba(0, 229, 255, 0.16); }
+   275→  60% { background-color: rgba(0, 229, 255, 0.07); }
+   276→  100% { opacity: 1; transform: translateX(0); background-color: transparent; }
+   277→}
+   278→.row-in-cyan { animation: krupp-row-in-cyan 0.6s ease-out; }
+   279→@keyframes krupp-row-in-orange {
+   280→  0% { opacity: 0; transform: translateX(10px); background-color: rgba(255, 136, 0, 0.2); }
+   281→  60% { background-color: rgba(255, 136, 0, 0.09); }
+   282→  100% { opacity: 1; transform: translateX(0); background-color: transparent; }
+   283→}
+   284→.row-in-orange { animation: krupp-row-in-orange 0.6s ease-out; }
+   285→
+   286→/* ---------- column-scoped accent identity (SYS.1 green / SYS.2 cyan / SYS.3 orange) ---------- */
+   287→[data-sys='1'] .krupp-panel-head { background: linear-gradient(90deg, rgba(0, 255, 102, 0.07), transparent 55%); }
+   288→[data-sys='2'] .krupp-panel-head { background: linear-gradient(90deg, rgba(0, 229, 255, 0.07), transparent 55%); }
+   289→[data-sys='3'] .krupp-panel-head { background: linear-gradient(90deg, rgba(255, 136, 0, 0.06), transparent 55%); }
+   290→[data-sys='1'] .krupp-panel:hover { border-color: rgba(0, 255, 102, 0.22); }
+   291→[data-sys='2'] .krupp-panel:hover { border-color: rgba(0, 229, 255, 0.25); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 0 18px rgba(0, 229, 255, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.6); }
+   292→[data-sys='3'] .krupp-panel:hover { border-color: rgba(255, 136, 0, 0.22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 0 18px rgba(255, 136, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.6); }
+   293→[data-sys='2'] .krupp-panel::before,
+   294→[data-sys='2'] .krupp-panel::after { border-color: rgba(0, 229, 255, 0.55); }
+   295→[data-sys='3'] .krupp-panel::before,
+   296→[data-sys='3'] .krupp-panel::after { border-color: rgba(255, 136, 0, 0.55); }
+   297→/* regime overrides keep authority over column identity */
+   298→[data-regime='CRISIS'] [data-sys] .krupp-panel::before,
+   299→[data-regime='CRISIS'] [data-sys] .krupp-panel::after { border-color: rgba(255, 17, 51, 0.85); }
+   300→
+   301→/* column label rail chips */
+   302→.sys-rail {
+   303→  display: inline-flex;
+   304→  align-items: center;
+   305→  padding: 1px 6px;
+   306→  border: 1px solid #1a1a24;
+   307→  border-radius: 2px;
+   308→  background: #07070c;
+   309→  letter-spacing: 0.3em;
+   310→}
+   311→.sys-rail-1 { color: #00ff66; border-color: rgba(0, 255, 102, 0.3); }
+   312→.sys-rail-2 { color: #00e5ff; border-color: rgba(0, 229, 255, 0.3); }
+   313→.sys-rail-3 { color: #ff8800; border-color: rgba(255, 136, 0, 0.3); }
+   314→
+   315→/* ---------- regime-reactive global theming (driven by html[data-regime]) ---------- */
+   316→[data-regime='HIGH'] .krupp-panel::before,
+   317→[data-regime='HIGH'] .krupp-panel::after {
+   318→  border-color: rgba(255, 136, 0, 0.65);
+   319→}
+   320→[data-regime='HIGH'] .krupp-panel:hover {
+   321→  border-color: rgba(255, 136, 0, 0.28);
+   322→  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 0 18px rgba(255, 136, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.6);
+   323→}
+   324→[data-regime='HIGH'] .krupp-panel-head {
+   325→  background: linear-gradient(90deg, rgba(255, 136, 0, 0.06), transparent 55%);
+   326→}
+   327→
+   328→[data-regime='CRISIS'] .krupp-root {
+   329→  background-image:
+   330→    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 17, 51, 0.07), transparent),
+   331→    linear-gradient(rgba(56, 14, 22, 0.5) 1px, transparent 1px),
+   332→    linear-gradient(90deg, rgba(56, 14, 22, 0.5) 1px, transparent 1px);
+   333→}
+   334→[data-regime='CRISIS'] .krupp-panel {
+   335→  border-color: rgba(255, 17, 51, 0.28);
+   336→  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 0 22px rgba(255, 17, 51, 0.07), 0 0 0 1px rgba(0, 0, 0, 0.6);
+   337→}
+   338→[data-regime='CRISIS'] .krupp-panel::before,
+   339→[data-regime='CRISIS'] .krupp-panel::after {
+   340→  border-color: rgba(255, 17, 51, 0.85);
+   341→  opacity: 1;
+   342→}
+   343→[data-regime='CRISIS'] .krupp-panel:hover {
+   344→  border-color: rgba(255, 17, 51, 0.5);
+   345→  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 0 26px rgba(255, 17, 51, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.6);
+   346→}
+   347→[data-regime='CRISIS'] .krupp-panel-head {
+   348→  background: linear-gradient(90deg, rgba(255, 17, 51, 0.08), transparent 55%);
+   349→}
+   350→[data-regime='CRISIS'] .krupp-scanline {
+   351→  background: repeating-linear-gradient(0deg, rgba(255, 17, 51, 0.028) 0 1px, transparent 1px 3px);
+   352→}
+   353→
+   354→/* ---------- round-4 styling details ---------- */
+   355→
+   356→/* terminal lines: subtle left-rail glow on hover (source color set inline) */
+   357→.term-line { transition: background-color 0.15s ease; border-radius: 1px; }
+   358→.term-line:hover { background-color: rgba(255, 255, 255, 0.028) !important; }
+   359→
+   360→/* blotter rows: hover highlight (zebra set via tailwind class) */
+   361→.blotter-row { transition: background-color 0.12s ease; }
+   362→.blotter-row:hover { background-color: rgba(0, 229, 255, 0.045) !important; }
+   363→
+   364→/* desk session chips: live-session pulse border */
+   365→@keyframes krupp-sess-live {
+   366→  0%, 100% { border-color: rgba(0, 229, 255, 0.45); }
+   367→  50% { border-color: rgba(0, 229, 255, 0.9); }
+   368→}
+   369→.sess-chip { transition: border-color 0.2s ease, background-color 0.15s ease; }
+   370→.sess-chip:hover { background-color: rgba(0, 229, 255, 0.08) !important; }
+   371→.sess-chip-live { animation: krupp-sess-live 2.4s ease-in-out infinite; }
+   372→
+   373→/* reduced motion: still the live-session chip */
+   374→@media (prefers-reduced-motion: reduce) {
+   375→  .sess-chip-live { animation: none; }
+   376→}
+   377→
+   378→/* ---------- round-7 styling details ---------- */
+   379→
+   380→/* active session drill chip — full-cyan lock state overrides the live pulse */
+   381→.sess-chip-active { animation: none !important; box-shadow: 0 0 10px rgba(0, 229, 255, 0.25); }
+   382→
+   383→/* risk-policy slider thumbs: hardware toggle look */
+   384→[data-slot='slider-thumb'] {
+   385→  border-width: 2px;
+   386→  border-radius: 2px;
+   387→  box-shadow: 0 0 0 2px rgba(2, 2, 2, 0.9), 0 0 8px rgba(0, 255, 102, 0.25);
+   388→  transition: box-shadow 0.15s ease, transform 0.1s ease;
+   389→}
+   390→[data-slot='slider-thumb']:hover { transform: scaleY(1.08); }
+   391→[data-slot='slider-thumb']:focus-visible {
+   392→  box-shadow: 0 0 0 2px rgba(2, 2, 2, 0.9), 0 0 12px rgba(0, 229, 255, 0.5);
+   393→}
+   394→
+   395→/* audit event-rate buckets */
+   396→.audit-bucket { transition: transform 0.15s ease, filter 0.15s ease; transform-origin: bottom; }
+   397→.audit-bucket:hover { filter: brightness(1.5); }
+   398→
+   399→/* ---------- round-8 styling details (vol snapshot persistence, corr heat strip, policy profiles) ---------- */
+   400→
+   401→/* persisted vol strip container: inner top highlight + hover glow + slow scan sweep */
+   402→.vol-strip-box {
+   403→  position: relative;
+   404→}
+   405→.vol-strip-box::after {
+   406→  content: '';
+   407→  position: absolute;
+   408→  inset: 0;
+   409→  pointer-events: none;
+   410→  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 18%);
+   411→}
+   412→.vol-strip-box:hover { border-color: rgba(255, 136, 0, 0.3); }
+   413→.vol-strip-box .strip-sweep {
+   414→  position: absolute;
+   415→  top: 0;
+   416→  bottom: 0;
+   417→  width: 24px;
+   418→  pointer-events: none;
+   419→  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.05), transparent);
+   420→  animation: krupp-strip-sweep 9s linear infinite;
+   421→}
+   422→@keyframes krupp-strip-sweep {
+   423→  0% { left: -24px; }
+   424→  100% { left: 100%; }
+   425→}
+   426→@media (prefers-reduced-motion: reduce) {
+   427→  .vol-strip-box .strip-sweep { animation: none; }
+   428→}
+   429→
+   430→/* correlation heat history strip: recessed well */
+   431→.heat-strip { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7); }
+   432→.heat-strip:hover { border-color: rgba(0, 229, 255, 0.28); }
+   433→
+   434→/* policy profiles dialog: desk-terminal rows */
+   435→.prof-row { transition: background-color 0.12s ease; }
+   436→.prof-row:hover { background-color: rgba(0, 229, 255, 0.04) !important; }
+   437→
+   438→/* CBOE panel chips: subtle hover lift for the 5-up chip row */
+   439→[data-panel='cboe-chips'] > div { transition: border-color 0.15s ease, background-color 0.15s ease; }
+   440→[data-panel='cboe-chips'] > div:hover { border-color: rgba(255, 136, 0, 0.35); background-color: #07070e; }
+   441→
+   442→/* ============================================================================
+   443→   ROUND 9 BLOCK — print/PDF pipeline · hotkey map · crosshair polish
+   444→   ============================================================================ */
+   445→
+   446→/* --- A4 PRINT PIPELINE ------------------------------------------------------
+   447→   Screen root (and every Radix portal: dialogs, toasts) is hidden; the single
+   448→   .print-doc renders as a paper report. The browser print engine = PDF renderer
+   449→   (⌘P / Save as PDF), zero JS dependencies. */
+   450→.print-doc { display: none; }
+   451→
+   452→@media print {
+   453→  @page {
+   454→    size: A4;
+   455→    margin: 12mm 11mm 14mm;
+   456→  }
+   457→  html, body {
+   458→    background: #ffffff !important;
+   459→    color: #111111 !important;
+   460→    height: auto !important;
+   461→  }
+   462→  /* kill the entire screen UI + floating portals */
+   463→  .krupp-root,
+   464→  [data-radix-portal],
+   465→  [data-radix-popper-content-wrapper] {
+   466→    display: none !important;
+   467→  }
+   468→  .print-doc {
+   469→    display: block !important;
+   470→    font-family: var(--font-geist-mono), ui-monospace, monospace;
+   471→    font-size: 9px;
+   472→    line-height: 1.45;
+   473→    color: #111;
+   474→  }
+   475→  .print-doc .pr-classbar {
+   476→    border: 1.5px solid #111;
+   477→    padding: 3px 8px;
+   478→    font-size: 8.5px;
+   479→    font-weight: 700;
+   480→    letter-spacing: 0.22em;
+   481→    text-align: center;
+   482→    margin-bottom: 8px;
+   483→  }
+   484→  .print-doc .pr-head {
+   485→    display: flex;
+   486→    justify-content: space-between;
+   487→    align-items: flex-end;
+   488→    gap: 16px;
+   489→    border-bottom: 2px solid #111;
+   490→    padding-bottom: 6px;
+   491→    margin-bottom: 10px;
+   492→  }
+   493→  .print-doc .pr-head h1 {
+   494→    font-size: 15px;
+   495→    letter-spacing: 0.08em;
+   496→    margin: 0 0 2px;
+   497→  }
+   498→  .print-doc .pr-head .pr-sub {
+   499→    font-size: 8px;
+   500→    letter-spacing: 0.18em;
+   501→    color: #444;
+   502→    margin: 0;
+   503→  }
+   504→  .print-doc .pr-meta { border-collapse: collapse; font-size: 7.5px; }
+   505→  .print-doc .pr-meta th {
+   506→    text-align: left;
+   507→    padding-right: 6px;
+   508→    color: #555;
+   509→    font-weight: 400;
+   510→    letter-spacing: 0.08em;
+   511→  }
+   512→  .print-doc .pr-meta td { font-weight: 700; }
+   513→  .print-doc .pr-sec {
+   514→    break-inside: avoid;
+   515→    margin-bottom: 11px;
+   516→  }
+   517→  .print-doc .pr-sec h2 {
+   518→    font-size: 9.5px;
+   519→    letter-spacing: 0.2em;
+   520→    border-bottom: 1px solid #999;
+   521→    padding-bottom: 2px;
+   522→    margin: 0 0 4px;
+   523→  }
+   524→  .print-doc .pr-sec h3 {
+   525→    font-size: 8.5px;
+   526→    letter-spacing: 0.14em;
+   527→    margin: 6px 0 3px;
+   528→    color: #333;
+   529→  }
+   530→  .print-doc .pr-t {
+   531→    border-collapse: collapse;
+   532→    width: 100%;
+   533→    font-size: 8px;
+   534→  }
+   535→  .print-doc .pr-t th, .print-doc .pr-t td {
+   536→    border: 0.5px solid #bbb;
+   537→    padding: 1.5px 5px;
+   538→    text-align: left;
+   539→    vertical-align: top;
+   540→  }
+   541→  .print-doc .pr-t th {
+   542→    background: #efefef;
+   543→    font-weight: 700;
+   544→    letter-spacing: 0.06em;
+   545→    white-space: nowrap;
+   546→  }
+   547→  .print-doc .pr-t-kv { width: auto; min-width: 62%; }
+   548→  .print-doc .pr-t-kv th { color: #555; font-weight: 400; }
+   549→  .print-doc .pr-t-kv td { font-weight: 700; }
+   550→  .print-doc .pr-t-2col th { color: #555; font-weight: 400; width: 12%; }
+   551→  .print-doc .pr-t-data td { font-variant-numeric: tabular-nums; }
+   552→  .print-doc .pr-t-data td.pr-msg { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+   553→  .print-doc .pr-flip td { background: #f5f5f5; font-weight: 700; }
+   554→  .print-doc .pr-score-row { display: flex; gap: 14px; align-items: flex-start; }
+   555→  .print-doc .pr-score {
+   556→    border: 1.5px solid #111;
+   557→    padding: 6px 12px;
+   558→    text-align: center;
+   559→    min-width: 92px;
+   560→  }
+   561→  .print-doc .pr-score-num { display: block; font-size: 26px; font-weight: 800; line-height: 1; }
+   562→  .print-doc .pr-score-cap { display: block; font-size: 7.5px; letter-spacing: 0.16em; color: #444; margin-top: 3px; }
+   563→  .print-doc .pr-note { font-size: 8px; color: #333; margin: 3px 0; }
+   564→  .print-doc .pr-foot {
+   565→    border-top: 2px solid #111;
+   566→    margin-top: 10px;
+   567→    padding-top: 4px;
+   568→    font-size: 7px;
+   569→    letter-spacing: 0.14em;
+   570→    color: #555;
+   571→    text-align: center;
+   572→  }
+   573→}
+   574→
+   575→/* --- hotkey map (round 7): kbd caps get a pressed-travel hover --- */
+   576→.krupp-root kbd { transition: transform 0.1s ease, box-shadow 0.1s ease; }
+   577→.krupp-root kbd:hover { transform: translateY(1px); box-shadow: none !important; }
+   578→
+   579→/* ---------- round-9 styling details (market pulse strip, desk alerts) ---------- */
+   580→
+   581→/* MARKET PULSE — recessed instrument well with top highlight + hover glow */
+   582→.pulse-canvas-wrap {
+   583→  background:
+   584→    linear-gradient(180deg, rgba(0, 229, 255, 0.045), transparent 18%),
+   585→    repeating-linear-gradient(90deg, rgba(26, 26, 36, 0.4) 0 1px, transparent 1px 90px),
+   586→    #030308;
+   587→  border: 1px solid #15151f;
+   588→  box-shadow: inset 0 1px 0 rgba(0, 229, 255, 0.08), inset 0 0 24px rgba(0, 0, 0, 0.55);
+   589→  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+   590→}
+   591→.pulse-canvas-wrap:hover {
+   592→  border-color: rgba(0, 229, 255, 0.3);
+   593→  box-shadow: inset 0 1px 0 rgba(0, 229, 255, 0.14), 0 0 18px rgba(0, 229, 255, 0.07), inset 0 0 24px rgba(0, 0, 0, 0.55);
+   594→}
+   595→.pulse-strip { position: relative; }
+   596→.pulse-strip::after {
+   597→  /* slow cyan scan sweep across the well (reduced-motion respected below) */
+   598→  content: '';
+   599→  position: absolute;
+   600→  inset: 34px 0 46px 0;
+   601→  pointer-events: none;
+   602→  background: linear-gradient(100deg, transparent 44%, rgba(0, 229, 255, 0.045) 50%, transparent 56%);
+   603→  background-size: 220% 100%;
+   604→  animation: pulse-sweep 9s linear infinite;
+   605→}
+   606→@keyframes pulse-sweep {
+   607→  from { background-position: 130% 0; }
+   608→  to { background-position: -90% 0; }
+   609→}
+   610→
+   611→/* chip rail — hardware tiles */
+   612→.pulse-chip {
+   613→  border: 1px solid #16161f;
+   614→  background: rgba(255, 255, 255, 0.018);
+   615→  padding: 1px 6px;
+   616→  border-radius: 2px;
+   617→  letter-spacing: 0.06em;
+   618→  transition: border-color 0.2s ease, background-color 0.15s ease;
+   619→}
+   620→.pulse-chip:hover { border-color: rgba(0, 229, 255, 0.35); background-color: rgba(0, 229, 255, 0.05); }
+   621→.pulse-legend-dot {
+   622→  width: 7px; height: 7px; border-radius: 1px; display: inline-block;
+   623→  box-shadow: 0 0 5px currentColor;
+   624→}
+   625→.pulse-crash-chip {
+   626→  color: #ff1133;
+   627→  font-weight: 700;
+   628→  letter-spacing: 0.12em;
+   629→  border: 1px solid rgba(255, 17, 51, 0.5);
+   630→  background: rgba(255, 17, 51, 0.09);
+   631→  padding: 1px 7px;
+   632→  border-radius: 2px;
+   633→  animation: pulse-crash-blink 1.1s steps(2, jump-none) infinite;
+   634→}
+   635→@keyframes pulse-crash-blink { 0% { opacity: 1; } 100% { opacity: 0.55; } }
+   636→
+   637→/* DESK ALERTS — sentinel rows */
+   638→.alert-row {
+   639→  background: rgba(255, 255, 255, 0.012);
+   640→  transition: border-color 0.2s ease, background-color 0.15s ease, box-shadow 0.2s ease;
+   641→}
+   642→.alert-row:hover { background-color: rgba(0, 255, 102, 0.035); }
+   643→.alert-row-tripped {
+   644→  background: rgba(255, 17, 51, 0.09) !important;
+   645→  border-color: rgba(255, 17, 51, 0.55) !important;
+   646→  box-shadow: 0 0 12px rgba(255, 17, 51, 0.25);
+   647→}
+   648→.alert-led-trip { animation: alert-led-flash 0.55s steps(2, jump-none) infinite; }
+   649→@keyframes alert-led-flash { 0% { opacity: 1; } 100% { opacity: 0.3; } }
+   650→
+   651→.alert-op-btn {
+   652→  font-family: var(--font-mono, monospace);
+   653→  font-size: 9px;
+   654→  font-weight: 700;
+   655→  color: #00e5ff;
+   656→  border: 1px solid rgba(0, 229, 255, 0.3);
+   657→  border-radius: 2px;
+   658→  padding: 0 4px;
+   659→  line-height: 1.35;
+   660→  background: rgba(0, 229, 255, 0.05);
+   661→  transition: background-color 0.15s ease, border-color 0.15s ease;
+   662→}
+   663→.alert-op-btn:hover { background-color: rgba(0, 229, 255, 0.14); border-color: rgba(0, 229, 255, 0.55); }
+   664→
+   665→.alert-th-input {
+   666→  font-family: var(--font-mono, monospace);
+   667→  font-size: 9px;
+   668→  color: #d8ffe9;
+   669→  background: #05050b;
+   670→  border: 1px solid #1c1c28;
+   671→  border-radius: 2px;
+   672→  padding: 0 4px;
+   673→  height: 16px;
+   674→  text-align: right;
+   675→  font-variant-numeric: tabular-nums;
+   676→  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+   677→}
+   678→.alert-th-input:focus {
+   679→  outline: none;
+   680→  border-color: rgba(0, 229, 255, 0.55);
+   681→  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.2);
+   682→}
+   683→
+   684→.alert-arm-btn {
+   685→  font-size: 8px;
+   686→  font-weight: 700;
+   687→  letter-spacing: 0.14em;
+   688→  color: #5c6b64;
+   689→  border: 1px solid #1c1c28;
+   690→  border-radius: 2px;
+   691→  padding: 1px 6px;
+   692→  background: rgba(255, 255, 255, 0.02);
+   693→  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+   694→  min-width: 44px;
+   695→}
+   696→.alert-arm-btn:hover { border-color: rgba(0, 255, 102, 0.45); color: #00ff66; }
+   697→.alert-arm-on {
+   698→  color: #00ff66;
+   699→  border-color: rgba(0, 255, 102, 0.45);
+   700→  background: rgba(0, 255, 102, 0.07);
+   701→  box-shadow: 0 0 8px rgba(0, 255, 102, 0.12);
+   702→}
+   703→.alert-arm-on:hover { background: rgba(0, 255, 102, 0.14); }
+   704→
+   705→.alert-x-btn {
+   706→  color: #3d4a42;
+   707→  border: 1px solid transparent;
+   708→  border-radius: 2px;
+   709→  padding: 2px;
+   710→  line-height: 0;
+   711→  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+   712→}
+   713→.alert-x-btn:hover { color: #ff1133; border-color: rgba(255, 17, 51, 0.4); background: rgba(255, 17, 51, 0.07); }
+   714→
+   715→.alert-tool-btn {
+   716→  color: #5c6b64;
+   717→  border: 1px solid #1c1c28;
+   718→  border-radius: 2px;
+   719→  padding: 2px 4px;
+   720→  line-height: 0;
+   721→  background: rgba(255, 255, 255, 0.02);
+   722→  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+   723→}
+   724→.alert-tool-btn:hover { color: #00e5ff; border-color: rgba(0, 229, 255, 0.4); background: rgba(0, 229, 255, 0.06); }
+   725→.alert-tool-on { color: #00e5ff; border-color: rgba(0, 229, 255, 0.5); background: rgba(0, 229, 255, 0.1); }
+   726→
+   727→.alert-select {
+   728→  font-family: var(--font-mono, monospace);
+   729→  font-size: 9px;
+   730→  color: #d8ffe9;
+   731→  background: #05050b;
+   732→  border: 1px solid #1c1c28;
+   733→  border-radius: 2px;
+   734→  height: 18px;
+   735→  padding: 0 2px;
+   736→}
+   737→.alert-select:focus { outline: none; border-color: rgba(0, 229, 255, 0.55); }
+   738→
+   739→.alert-add-row { background: rgba(0, 229, 255, 0.03); }
+   740→
+   741→/* reduced motion: kill sweeps + blinkers */
+   742→@media (prefers-reduced-motion: reduce) {
+   743→  .pulse-strip::after { animation: none; }
+   744→  .pulse-crash-chip { animation: none; }
+   745→  .alert-led-trip { animation: none; opacity: 1; }
+   746→}
+   747→

@@ -13,7 +13,7 @@ import { bumpCdelta, feed, resetFeed } from './feed'
 import { ledger } from './execution'
 import { hydrateLedger } from './ledgerSync'
 import { optDesk } from './optionsDesk'
-import { useKrupp } from './store'
+import { hydrateSound, useKrupp } from './store'
 import { setPolicySink } from './policy'
 import { pushTick, correlationMatrix, meanPairwiseRho } from './correlation'
 import {
@@ -100,6 +100,7 @@ export function useKruppFeed() {
 
     // --- desk alerts engine: hydrate sentinels + wire toast/sfx sinks (round 8) ---
     initAlerts()
+    hydrateSound() // alarm toggle preference survives reloads (r3)
     setAlertSinks(
       (title, desc, crit) => toast({ title, description: desc, variant: crit ? 'destructive' : 'default', duration: 6000 }),
       (kind) => playSiren(kind === 'crit' ? 'crisis' : 'warn'),
@@ -273,10 +274,16 @@ export function useKruppFeed() {
       s.emit('desk:risk', { score: m.score, regime: m.regime })
     }, 15_000)
 
-    // agent-core commentary (async reason/act loop)
-    const agent = setInterval(async () => {
+    // agent-core commentary (async reason/act loop).
+    // Exponential backoff: the upstream LLM core rate-limits under load — when
+    // a cycle fails (or arrives degraded) the interval widens 26s → 52 → 104 →
+    // 208s (cap); a clean LLM cycle resets it to the base cadence.
+    let agentDelay = 26_000
+    let agentTimer: ReturnType<typeof setTimeout> | null = null
+    const scheduleAgent = (ms: number) => { agentTimer = setTimeout(runAgentCycle, ms) }
+    const runAgentCycle = async (): Promise<void> => {
       const st = useKrupp.getState()
-      if (st.connection !== 'open' || !st.metrics.ts || !st.cboe) return
+      if (st.connection !== 'open' || !st.metrics.ts || !st.cboe) { scheduleAgent(agentDelay); return }
       st.setAgentStatus('ACTIVE (Asynchronous Reason/Act via Llama 3 70B Core)')
       try {
         const res = await fetch('/api/agent/commentary', {
@@ -292,6 +299,7 @@ export function useKruppFeed() {
         if (!res.ok) throw new Error(String(res.status))
         const j = await res.json()
         pushLog({ id: `${Date.now()}-a`, ts: Date.now(), source: 'AGENT', level: 'info', message: `[AGENT] Reason/Act cycle complete: ${String(j.line).slice(0, 140)}` })
+        if (j?.degraded) { agentDelay = Math.min(agentDelay * 2, 208_000) } else { agentDelay = 26_000 }
       } catch {
         const canned = [
           'Hawkes λ within tolerance — holding depth-aware passive quotes.',
@@ -301,13 +309,16 @@ export function useKruppFeed() {
           'Entropy dispersion rising — shrinking clip sizes to 0.4x notional.',
         ]
         pushLog({ id: `${Date.now()}-a`, ts: Date.now(), source: 'AGENT', level: 'info', message: `[AGENT] Reason/Act cycle complete: ${canned[Math.floor(Math.random() * canned.length)]}` })
+        agentDelay = Math.min(agentDelay * 2, 208_000)
       }
-    }, 26000)
+      scheduleAgent(agentDelay)
+    }
+    scheduleAgent(agentDelay)
 
     return () => {
       clearInterval(ping)
       clearInterval(riskBeat)
-      clearInterval(agent)
+      if (agentTimer) clearTimeout(agentTimer)
       clearInterval(optSweep)
       clearInterval(volCap)
       clearInterval(rhoAlert)

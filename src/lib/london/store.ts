@@ -151,6 +151,18 @@ const MAX_LOGS = 240
 // server HTML from the client's first render (React hydration error).
 const POLICY_FALLBACK: DeskPolicy = { ...POLICY_DEFAULTS }
 
+// --- alert sound preference (persisted) -------------------------------------
+// localStorage `krupp.sound` — hydrated client-side in the feed effect
+// (SSR-safe: never read at module scope init for the React tree).
+const SOUND_KEY = 'krupp.sound'
+export function hydrateSound(): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = window.localStorage.getItem(SOUND_KEY)
+    if (raw != null) useKrupp.setState({ soundOn: raw === '1' })
+  } catch { /* storage unavailable */ }
+}
+
 export const useKrupp = create<KruppStore>((set) => ({
   connection: 'connecting',
   auth: null,
@@ -300,7 +312,12 @@ export const useKrupp = create<KruppStore>((set) => ({
   setLatency: (latencyMs) => set({ latencyMs }),
   setCrashUntil: (crashUntil) => set({ crashUntil }),
   setAgentStatus: (agentStatus) => set({ agentStatus }),
-  toggleSound: () => set((s) => ({ soundOn: !s.soundOn })),
+  toggleSound: () =>
+    set((s) => {
+      const soundOn = !s.soundOn
+      try { window.localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0') } catch { /* storage unavailable */ }
+      return { soundOn }
+    }),
   setBootDone: (bootDone) => set({ bootDone }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setEngaged: (engaged) => set({ engaged }),

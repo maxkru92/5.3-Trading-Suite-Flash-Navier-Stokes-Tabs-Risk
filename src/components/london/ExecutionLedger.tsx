@@ -6,8 +6,8 @@
 // Hamiltonian fills with depth slippage, live P&L + equity curve.
 // ============================================================================
 
-import { useMemo } from 'react'
-import { Ban, Bot, Crosshair, Database, DollarSign, History, Landmark, Play, Square, XCircle } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Ban, Bot, Crosshair, Database, DollarSign, Download, History, Landmark, Play, Square, XCircle } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { ledger } from '@/lib/london/execution'
@@ -65,6 +65,26 @@ export function ExecutionLedger() {
 
   const inDrill = drillSession != null
   const drillMeta = inDrill ? deskSessions[drillSession] : undefined
+
+  // --- ledger CSV export — streams the full SQLite blotter as a download ---
+  const [exporting, setExporting] = useState(false)
+  const exportCsv = () => {
+    setExporting(true)
+    try {
+      const a = document.createElement('a')
+      a.href = '/api/ledger?format=csv'
+      a.download = ''
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      useKrupp.getState().pushLog({
+        id: `csv-${Date.now()}`, ts: Date.now(), source: 'LEDGER', level: 'info',
+        message: '[LEDGER] Full blotter exported to CSV (auditor stream).',
+      })
+    } finally {
+      setTimeout(() => setExporting(false), 1200)
+    }
+  }
 
   const openDrill = (i: number) => {
     const st = useKrupp.getState()
@@ -149,6 +169,18 @@ export function ExecutionLedger() {
           title="Market-out of the open position"
         >
           <Crosshair size={12} className="mr-1" aria-hidden /> FLATTEN
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 px-2.5 text-[9px] tracking-[0.18em] font-bold rounded-sm border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/40 shrink-0"
+          onClick={exportCsv}
+          disabled={exporting}
+          type="button"
+          title="Download the full persisted blotter (futures + options) as CSV"
+        >
+          <Download size={12} className="mr-1" aria-hidden /> {exporting ? 'EXPORTING…' : 'CSV'}
         </Button>
 
         <div className="ml-auto flex items-center gap-3">

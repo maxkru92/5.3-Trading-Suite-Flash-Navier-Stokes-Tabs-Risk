@@ -43,6 +43,32 @@ export async function GET(req: NextRequest) {
   try {
     const limit = Math.min(120, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? 80)))
 
+    // --- full ledger CSV export: ?format=csv ---------------------------------
+    // Streams the persisted blotter (futures + option tickets) as a
+    // spreadsheet-ready CSV — auditors get the exact SQLite history.
+    if (req.nextUrl.searchParams.get('format') === 'csv') {
+      const all = await db.ledgerFill.findMany({ orderBy: { createdAt: 'asc' }, take: 5000 })
+      const esc = (v: unknown): string => {
+        const s = v == null ? '' : String(v)
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+      }
+      const head = 'id,timestamp_utc,kind,sym,side,qty,price,slip_ticks,status,reason,pnl,meta'
+      const body = all.map((r) => [
+        r.clientId, r.createdAt.toISOString(), r.kind, r.sym, r.side,
+        r.qty, r.px, r.slipTicks, r.status, r.reason ?? '', r.pnl ?? '', r.meta ?? '',
+      ].map(esc).join(','))
+      const csv = [head, ...body].join('\n')
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      return new NextResponse(csv, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="krupp-ledger-${stamp}.csv"`,
+          'Cache-Control': 'no-store',
+        },
+      })
+    }
+
     // --- session drill-down: ?session=N returns that boot-session's fills ----
     // N indexes the sessions array (0 = newest / live session).
     const drillParam = req.nextUrl.searchParams.get('session')

@@ -22,35 +22,41 @@ interface KruppState {
   activeTab: number;
   subTabs: Record<number, number>;
   selection: Record<string, string>;
+  /** pinned desks (favourites) — rendered with a ★ marker in the tab rail */
+  favs: number[];
   setActiveTab(t: number): void;
   setSubTab(desk: number, i: number): void;
   select(key: string, sym: string): void;
+  toggleFav(t: number): void;
   bump(): void;
 }
 
-function loadWorkspace(): { activeTab: number; subTabs: Record<number, number>; selection: Record<string, string> } {
-  if (typeof window === 'undefined') return { activeTab: 0, subTabs: {}, selection: {} };
+function loadWorkspace(): { activeTab: number; subTabs: Record<number, number>; selection: Record<string, string>; favs: number[] } {
+  const empty = { activeTab: 0, subTabs: {}, selection: {}, favs: [] as number[] };
+  if (typeof window === 'undefined') return empty;
   try {
     const raw = window.localStorage.getItem(WS_KEY);
-    if (!raw) return { activeTab: 0, subTabs: {}, selection: {} };
-    const p = JSON.parse(raw) as Partial<{ activeTab: number; subTabs: Record<number, number>; selection: Record<string, string> }>;
+    if (!raw) return empty;
+    const p = JSON.parse(raw) as Partial<{ activeTab: number; subTabs: Record<number, number>; selection: Record<string, string>; favs: number[] }>;
     const tab = typeof p.activeTab === 'number' && p.activeTab >= 0 && p.activeTab <= 13 ? p.activeTab : 0;
+    const favs = Array.isArray(p.favs) ? p.favs.filter((f) => Number.isInteger(f) && f >= 0 && f <= 13).slice(0, 14) : [];
     return {
       activeTab: tab,
       subTabs: p.subTabs && typeof p.subTabs === 'object' ? p.subTabs : {},
       selection: p.selection && typeof p.selection === 'object' ? p.selection : {},
+      favs,
     };
   } catch {
-    return { activeTab: 0, subTabs: {}, selection: {} };
+    return empty;
   }
 }
 
-function persistWorkspace(s: Pick<KruppState, 'activeTab' | 'subTabs' | 'selection'>) {
+function persistWorkspace(s: Pick<KruppState, 'activeTab' | 'subTabs' | 'selection' | 'favs'>) {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(
       WS_KEY,
-      JSON.stringify({ activeTab: s.activeTab, subTabs: s.subTabs, selection: s.selection }),
+      JSON.stringify({ activeTab: s.activeTab, subTabs: s.subTabs, selection: s.selection, favs: s.favs }),
     );
   } catch {
     /* storage unavailable */
@@ -64,6 +70,7 @@ export const useKrupp = create<KruppState>()((set, get) => ({
   activeTab: boot.activeTab,
   subTabs: boot.subTabs,
   selection: boot.selection,
+  favs: boot.favs,
   setActiveTab: (t) => {
     set({ activeTab: t });
     persistWorkspace(get());
@@ -74,6 +81,12 @@ export const useKrupp = create<KruppState>()((set, get) => ({
   },
   select: (key, sym) => {
     set((s) => ({ selection: { ...s.selection, [key]: sym } }));
+    persistWorkspace(get());
+  },
+  toggleFav: (t) => {
+    set((s) => ({
+      favs: s.favs.includes(t) ? s.favs.filter((f) => f !== t) : [...s.favs, t],
+    }));
     persistWorkspace(get());
   },
   bump: () => set((s) => ({ revision: s.revision + 1 })),

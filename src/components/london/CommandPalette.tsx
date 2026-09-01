@@ -7,7 +7,7 @@
 
 import { useEffect } from 'react'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
-import { AlertOctagon, Bell, BellRing, Crosshair, Eraser, FileText, FolderDown, Keyboard, KeyRound, Play, Printer, Radio, RotateCcw, ShieldHalf, Skull, Sparkles, Square, Volume2, VolumeX } from 'lucide-react'
+import { AlertOctagon, Bell, BellRing, Crosshair, Eraser, FileDown, FileText, FolderDown, Keyboard, KeyRound, Play, Printer, Radio, RotateCcw, ShieldHalf, Skull, Sparkles, Square, Volume2, VolumeX } from 'lucide-react'
 import { useKrupp } from '@/lib/london/store'
 import { useKruppApi } from '@/lib/london/context'
 import { ledger } from '@/lib/london/execution'
@@ -177,6 +177,16 @@ export function CommandPalette() {
           </CommandItem>
           <CommandItem onSelect={run(() => printRiskReport())} className="font-mono text-[11px]">
             <Printer size={13} style={{ color: K.green }} /> Print / save report as PDF <span className="ml-auto text-muted-foreground text-[9px]">A4 print pipeline</span>
+          </CommandItem>
+          <CommandItem onSelect={run(() => {
+            const a = document.createElement('a')
+            a.href = '/api/ledger?format=csv'
+            a.download = ''
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+          })} className="font-mono text-[11px]">
+            <FileDown size={13} style={{ color: K.violet }} /> Export execution ledger <span className="ml-auto text-muted-foreground text-[9px]">CSV · full SQLite blotter</span>
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />

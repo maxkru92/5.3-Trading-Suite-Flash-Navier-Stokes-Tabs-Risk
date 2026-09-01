@@ -59,6 +59,16 @@ export function BootOverlay() {
         >
           KRUPP CAPITAL // L3 RISK DESK — CLICK TO SKIP
         </motion.div>
+        {/* kernel load progress — fills over the boot sequence (r3 styling) */}
+        <div className="mt-2 h-px w-full bg-[#12241c]" role="presentation">
+          <motion.div
+            className="h-full"
+            style={{ background: K.cyan, boxShadow: `0 0 6px ${K.cyan}` }}
+            initial={{ width: '0%' }}
+            animate={{ width: '100%' }}
+            transition={{ delay: 0.1, duration: 2.4, ease: 'easeInOut' }}
+          />
+        </div>
       </div>
     </motion.div>
   )

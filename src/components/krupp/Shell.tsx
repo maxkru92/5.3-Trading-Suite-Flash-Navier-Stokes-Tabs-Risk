@@ -39,6 +39,7 @@ import Desk10Liquidity from './desks/Desk10Liquidity';
 import Desk11Crypto from './desks/Desk11Crypto';
 import Desk12StatArb from './desks/Desk12StatArb';
 import Desk13Infra from './desks/Desk13Infra';
+import { Star } from 'lucide-react';
 
 type TabDef = {
   label: string;
@@ -114,15 +115,31 @@ function InterceptorChip({
   );
 }
 
-/** Live engine readout chip for the workspace breadcrumb rail (5 Hz). */
+/** Live engine readout chip for the workspace breadcrumb rail (5 Hz).
+ *  Direction changes fire a one-shot price flash (green/red pulse).
+ *  Flash bookkeeping lives at module scope — same guardrail pattern as the
+ *  market engine (ms.inst): background state survives tab switches. */
+const TICKER_DIR = new Map<string, 'up' | 'dn'>();
+const TICKER_FLASH = new Map<string, number>();
+
 function TickerChip({ sym, label }: { sym: string; label?: string }) {
+  useRevision(); // 5 Hz re-render so direction flips are observed
   const inst = ms.inst[sym];
   if (!inst) return null;
   const up = inst.changePct >= 0;
+  const d = up ? 'up' : 'dn';
+  if (TICKER_DIR.get(sym) !== d) {
+    TICKER_DIR.set(sym, d);
+    TICKER_FLASH.set(sym, (TICKER_FLASH.get(sym) ?? 0) + 1);
+  }
+  const flash = TICKER_FLASH.get(sym) ?? 0;
   return (
     <span className="hidden items-center gap-1.5 rounded border border-kborder2 bg-kpanel px-1.5 py-0.5 md:inline-flex" title={inst.def.name}>
       <span className="font-mono text-[9px] tracking-wider text-zinc-500">{label ?? sym.replace('1!', '')}</span>
-      <span className={`font-mono text-[10px] font-semibold tabular-nums ${up ? 'text-emerald-400' : 'text-rose-400'}`}>
+      <span
+        key={flash}
+        className={`font-mono text-[10px] font-semibold tabular-nums ${up ? 'text-emerald-400' : 'text-rose-400'} ${flash > 0 ? (up ? 'flash-green' : 'flash-red') : ''}`}
+      >
         {fPx(inst.last, inst.def.dec)}
       </span>
       <span className={`font-mono text-[9px] tabular-nums ${up ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
@@ -143,6 +160,8 @@ export default function Shell() {
   const theme = useTheme((s) => s.theme);
   const activeTab = useKrupp((s) => s.activeTab);
   const setActiveTab = useKrupp((s) => s.setActiveTab);
+  const favs = useKrupp((s) => s.favs);
+  const toggleFav = useKrupp((s) => s.toggleFav);
   useRevision(); // 5 Hz re-render of status surfaces
 
   /* ---- colourline cut-over flash (rendered OUTSIDE the keyed workspace) ---- */
@@ -155,9 +174,10 @@ export default function Shell() {
     }
   }, [theme]);
 
-  /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 · V colourline
-         (plain keys are skipped on the LONDON EDGE tab — the landing terminal
-          owns its own single-key routing: 1/2/3 symbols, C crash, R reset, T engage) ---- */
+  /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
+         F pin/unpin active desk · V colourline. Plain keys are skipped on the
+         LONDON EDGE tab — the landing terminal owns its own single-key routing
+         (1/2/3 symbols, C crash, R reset, T engage) ---- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -167,6 +187,11 @@ export default function Shell() {
       if (e.key.toLowerCase() === 'v') {
         e.preventDefault();
         useTheme.getState().toggleTheme();
+        return;
+      }
+      if (e.key.toLowerCase() === 'f' && activeTab !== 0) {
+        e.preventDefault();
+        toggleFav(activeTab);
         return;
       }
       if (activeTab === 0) return; // landing terminal owns plain keys
@@ -182,7 +207,7 @@ export default function Shell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeTab, setActiveTab]);
+  }, [activeTab, setActiveTab, toggleFav]);
 
   if (!mounted) {
     return (
@@ -254,24 +279,50 @@ export default function Shell() {
           </div>
         </div>
 
-        {/* ------------- 14-tab bar (LONDON EDGE + 13 desks) ------------- */}
+        {/* ------------- 14-tab bar (LONDON EDGE + 13 desks, ★ = pinned) ------------- */}
         <nav className="krupp-scroll flex gap-0.5 overflow-x-auto px-2" aria-label="Desk navigation">
           {TABS.map((t, i) => {
             const TIcon = t.icon;
             const active = i === activeTab;
+            const pinned = favs.includes(i);
             return (
               <button
                 key={t.label}
                 onClick={() => setActiveTab(i)}
-                className={`group relative flex shrink-0 items-center gap-1.5 px-2.5 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                aria-current={active ? 'page' : undefined}
+                title={t.deskNo ? `${t.label} — desk ${String(t.deskNo).padStart(2, '0')}${pinned ? ' (pinned)' : ''}` : t.label}
+                className={`group relative flex shrink-0 items-center gap-1.5 px-2.5 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider outline-none transition-colors focus-visible:ring-1 focus-visible:ring-kaccent/70 ${
                   active ? t.accent : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
                 <TIcon size={12} strokeWidth={2.2} />
                 <span className="hidden lg:inline">{t.label}</span>
                 <span className="lg:hidden">{t.deskNo ? String(t.deskNo).padStart(2, '0') : '◆'}</span>
+                {t.deskNo !== undefined && (
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={pinned ? `Unpin ${t.label}` : `Pin ${t.label}`}
+                    aria-pressed={pinned}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFav(i);
+                    }}
+                    className={`-mr-0.5 ml-0.5 rounded-sm p-0.5 transition-all hover:scale-110 ${
+                      pinned ? 'text-amber-300 drop-shadow-[0_0_4px_rgba(252,211,77,0.8)]' : 'text-zinc-700 opacity-0 hover:text-amber-300 group-hover:opacity-100 focus-visible:opacity-100'
+                    }`}
+                  >
+                    <Star size={9} strokeWidth={2.6} fill={pinned ? 'currentColor' : 'none'} />
+                  </span>
+                )}
                 <span
-                  className={`absolute inset-x-1 bottom-0 h-0.5 rounded-full transition-opacity ${t.bar} ${active ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute inset-x-1 bottom-0 h-0.5 rounded-full transition-all ${t.bar} ${
+                    active
+                      ? 'opacity-100 shadow-[0_0_10px_var(--glow-accent,rgba(34,211,238,0.65))]'
+                      : pinned
+                        ? 'opacity-60'
+                        : 'opacity-0'
+                  }`}
                 />
               </button>
             );
@@ -362,6 +413,7 @@ export default function Shell() {
               <kbd className="kbd-hint">L</kbd> EDGE
               <kbd className="kbd-hint">1-9</kbd><kbd className="kbd-hint">0</kbd> DESK 01-10
               <kbd className="kbd-hint">Q</kbd><kbd className="kbd-hint">W</kbd><kbd className="kbd-hint">E</kbd> DESK 11-13
+              <kbd className="kbd-hint">F</kbd> PIN
               <kbd className="kbd-hint">V</kbd> COLOURLINE
             </span>
           </span>

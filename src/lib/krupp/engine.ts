@@ -392,6 +392,13 @@ class Engine {
     c.active = false;
     c.phase = 'NORMAL';
     c.recoveredAt = Date.now();
+    // r10: announce the recovery on the window bus so the UI shell can fire
+    // the desk-pitched all-clear chirp — this is the ONLY path that knows an
+    // AUTO-recovery timer expired (the tick loop), and the manual terminate
+    // button routes through here too, so one event = one chirp, no doubles.
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('krupp:crisis-end', { detail: { cycle: c.count } }));
+    }
   }
 }
 

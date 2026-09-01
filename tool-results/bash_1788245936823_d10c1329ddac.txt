@@ -1,0 +1,259 @@
+- The desk now degrades gracefully under LLM rate limiting (varied heuristic commentary + backoff instead of 429 spam), the full blotter is exportable for audit (CSV), desks can be pinned/favourited persistently (★ + F hotkey), and the alarm toggle survives reloads.
+- Notes for next round: (1) 429 log lines seen this round predate the fix — expect them to thin out; the route cooldown can be tuned via COOLDOWN_MS in commentary route; (2) pin order follows tab index, not pin order — reordering pinned tabs would need a drag rail; (3) candidates for next features: desk-level alert sound differentiation, session CSV export scoped to a single drill, a workspace "reset layout" command, or per-desk theme accents.
+
+---
+Task ID: 4
+Agent: Z.ai cron webDevReview (round 4)
+Task: Status assessment + agent-browser QA sweep, bug fix (order-ladder duplicate keys), new features (vol-history CSV export, WorkspaceHelp overlay + layout factory reset, pinned quick-rail), styling details.
+
+Work Log:
+- Status assessment: services healthy (:3000 Next, :3030 krupp-stream, :81 gateway); landing live in MK-II (feed ~3.8k t/s, risk dial CALM, IV surface + GEX populated), regime escalated to HIGH TOXICITY mid-sweep and all accents correctly flipped to warning-orange; HFT↔MK-II flip re-verified; desks render; mobile 390px clean; workspace + theme persist. Residual 429 log lines predate the round-3 backoff fix (fallback composer handles them).
+- BUGFIX — React "two children with the same key" storm (a605.15-style keys, ~77/s): OrderBookLadder keyed rows by `a${l.price}` / `b${l.price}` while the relay can emit duplicate price levels inside one snapshot (roundToTick collapses adjacent levels when `half` is not tick-aligned). Fixed by aggregating duplicate price levels in the bids/asks useMemo (Map keyed by price, sizes summed — also the CORRECT depth-ladder semantics) while preserving feed ordering (bids best-first desc, asks best-first asc). Verified: error rate 0 over 25s of live streaming (was ~926 per 10s). Note for QA: Turbopack dev chunk names are stable (not content-hashed) — after an edit, the first reload can still execute the stale module; wait one compile cycle before judging console output (cost me a false "fix didn't work" detour).
+- FEATURE — vol-history CSV audit export: GET /api/volhistory?format=csv[&limit=N] streams the persisted VolSnapshot series (up to 720 rows) as text/csv with Content-Disposition krupp-volhistory-<stamp>.csv, RFC-4180 quoting, ISO timestamps; JSON shape unchanged. UI: cyan "CSV" chip button in the CBOE panel header (EXPORTING state + [CBOE] LEDGER terminal log entry) + "Export vol snapshot series" command in the London CommandPalette REPORTING group. Verified via curl through :3000 AND the :81 gateway + in-browser click → terminal log.
+- FEATURE — WorkspaceHelp overlay (new src/components/krupp/WorkspaceHelp.tsx): "?" on any of the 13 desks opens a theme-aware reference card (the landing terminal keeps its own "?" → HotkeyHelp; routing mirrored in the Shell key handler). Sections: workspace keyboard map (L/1-9/0/Q/W/E/F/V/?/⌘K), pinned-desks quick list (click chip = jump), steering notes (crash drill, interceptors, colourline cut-over, pins), and a LAYOUT FACTORY RESET block with an armed/confirm two-step destructive button.
+- FEATURE — workspace factory reset: useKrupp.resetWorkspace() wipes 'krupp-workspace' (pins, sub-tabs, selections, active tab) and returns to LONDON EDGE. Verified: reset → localStorage null → back on landing with empty pins.
+- STYLING — footer status line: added "? HELP" kbd chip (desks only) and a pinned-desk quick-jump rail (★ + amber chips 01…13, active pin highlighted, xl+ only) — click jumps without touching the tab rail.
+- Verification: bun run lint CLEAN (fixed a react-hooks/set-state-in-effect violation by re-arming the reset button via a wrapped onOpenChange instead of an effect); tsc --noEmit clean for src/ (mini-services/skills errors pre-exist, outside app scope); browser-verified in both colourlines: help dialog MK-II + HFT, pin-chip jump (02 → OPTIONS & RISK), reset flow, CSV button + gateway payload, mobile 390px. Screenshots qa-r4-01…qa-r4-13.png in project root.
+
+Stage Summary:
+- The duplicate-key console-error storm is gone (ladder now aggregates duplicate levels — correct L2 semantics), the persisted vol series is exportable for audit (CSV), desks gained a global "?" reference card with layout factory reset + pinned quick-jump rail in the footer.
+- Notes for next round: (1) Turbopack stable dev chunk names + reload timing can fake "fix didn't work" during QA — always wait one compile cycle; (2) remaining candidates: drag-to-reorder pinned tabs (pin order still follows tab index), desk-level alert-sound differentiation, session-scoped CSV export for a single drill, per-desk theme accents, or a workspace "duplicate layout" preset system; (3) the London CommandPalette is still landing-only (⌘K on desks does nothing) — porting it globally would need the london context provider hoisted into Shell.
+
+---
+Task ID: 5
+Agent: Z.ai cron webDevReview (round 5)
+Task: Status assessment + agent-browser QA sweep, mobile styling bugfix, new features (workspace ⌘K command palette on all 13 desks, drag-to-reorder pinned quick rail), styling details.
+
+Work Log:
+- Status assessment: all services healthy (:3000 Next, :3030 krupp-stream, :81 gateway); landing live (feed ~3.5k t/s, risk dial CALM→HIGH escalation handled, IV surface + GEX populated); HFT↔MK-II flip re-verified; desks render in both colourlines; theme + workspace persist; lint + tsc (src/) clean. Verified the RiskDial needle mathematically via DOM eval: needle-derived score === readout (42.6/42.6) — earlier "needle looks wrong" was a screenshot misread, NOT a bug. Zero new console errors over a 30s live window; the duplicate-key errors seen in one console dump were stale agent-browser session buffer history (round-4 ladder aggregation fix confirmed live: 0 occurrences in a fresh 30s window).
+- BUGFIX — mobile (390px) interceptor chips clipped: the footer interceptor row (`ml-auto flex flex-wrap`) right-aligned wrapped lines so "EMERGENCY FLATTENING ARMED" rendered left-clipped ("GENCY…"). Fixed with `w-full justify-center sm:w-auto sm:justify-end` — chips now wrap centered and fully visible on mobile, right-aligned on sm+. Verified at 390px (qa-r5-11).
+- REFACTOR — TABS registry extracted from Shell.tsx into src/components/krupp/tabs.tsx (+ DESK_HOTKEY map) so shared surfaces (workspace palette, help cards) can enumerate the 14-tab matrix without a circular import. Tab order unchanged (hotkeys + persisted activeTab are index-load-bearing).
+- FEATURE — WorkspacePalette (src/components/krupp/WorkspacePalette.tsx): ⌘K/Ctrl+K on any of the 13 desks opens a theme-aware command palette (the LONDON EDGE landing keeps its own desk palette — the two listeners never coexist since the landing terminal unmounts on desks). Shell owns the ⌘K branch in its single key handler (no second document listener, no stale closures); palette is controlled (open/onOpenChange + onRequestHelp). Command groups: NAVIGATION (all 14 tabs w/ desk no. + hotkey hints), COLOURLINE (cut-over to the other palette, target name resolved live), WORKSPACE (pin/unpin active desk, hotkey-map card, layout factory reset), REPORTING (ledger CSV + vol-history CSV anchor downloads, same pattern as the panel chips), CRISIS STEERING (simulate crash / terminate lockdown — branch reads ms.crisis via useRevision while open). Footer legend gained a "⌘K COMMANDS" chip (desks only, lg+). Browser-verified: open/search/jump (BOND FUTURES), export group renders, crash command → lockdown live → terminate command → recovered, factory reset via palette → localStorage ws null.
+- FEATURE — drag-to-reorder pinned quick rail: store gained moveFav(from,to) (splice reorder within favs, persisted to 'krupp-workspace'); footer rail chips are now draggable (HTML5 DnD, cursor-grab/grabbing, dragged chip gets scale-110 + amber glow ring, drop target reorders; title shows slot number). Pin order = append order (unchanged), drag overrides it. Verified: pin 4 then 3 → favs [4,3]; drag chip 03 onto 04 → [3,4]; survived reload (favs [3,4], activeTab 3 restored).
+- STYLING — details: workspace palette styled to the terminal chrome (bg-kheader, kborder2, krupp-scroll, mono items, footer provenance line); quick-rail chips gained grab affordances + drag feedback; footer legend extended (⌘K COMMANDS); WorkspaceHelp ⌘K row re-worded (workspace palette on desks) + steering note now documents drag-to-reorder.
+- QA note for future rounds: pressing plain keys (1/2/3/C/R/T) or ⌘K while the LONDON terminal is mounted routes to the London terminal's own palette/handlers by design — test sequences must click the desk tab (or press L then a desk hotkey AFTER focus left the palette input; the cmdk INPUT swallows keys via the INPUT guard).
+
+Stage Summary:
+- The 13 desks gained a full workspace command surface (⌘K) spanning navigation, colourline, pins, audit exports and crisis steering; the pinned quick rail is user-orderable with persisted drag order; the mobile footer clipping is fixed.
+- Verification: bun run lint CLEAN, tsc --noEmit clean for src/, browser-verified in both colourlines + mobile 390px, zero new console errors, screenshots qa-r5-01…qa-r5-16 in project root.
+- Notes for next round: (1) palette is desk-only by design — porting the London palette globally still requires hoisting the london context provider into Shell (round-4 note stands); (2) HTML5 DnD on the quick rail is mouse-only — touch reordering would need pointer events (acceptable: unpin/repin changes order); (3) remaining candidates: named workspace presets (save/restore layout snapshots), desk-level alert-sound differentiation, session-scoped CSV export, per-desk theme accents, ⌘K palette trigger button in the header for small viewports.
+
+---
+Task ID: 6
+Agent: Z.ai cron webDevReview (round 6)
+Task: Status assessment + agent-browser QA sweep, bug fixes (SystemHeader token-row overlap, dialog mobile overflow), full desk colourline flip (k* var aliasing), new feature: named layout presets (+ P hotkey, ⌘K entry, compact rail triggers), styling details.
+
+Work Log:
+- Status: all services healthy (:3000 Next, :3030 krupp-stream, :81 gateway); landing live (~3.5-4.5k t/s, risk dial CALM↔HIGH escalation handled, IV surface + GEX populated); lint + tsc clean; dev.log shows commentary route 200 (round-3 backoff holding).
+- BUGFIX — London SystemHeader token-row painted AUTH/MINT L3/trash buttons OVER the auth chip at xl widths: inner row had `min-w-0` + chip `flex-[2]` so flexbox collapsed the row below its ~355px min-content (row measured 235px) and its shrink-0 children overflowed onto the chip. Fixed: row keeps min-width:auto (dropped min-w-0 + max-w-xl moved onto the Input), outer container stacks below xl (`flex-col xl:flex-row`). Verified 1440px + 768px (qa-r6-05/06/07) — chip and buttons no longer overlap.
+- BUGFIX — all 4 terminal dialogs (WorkspacePresets, WorkspaceHelp, london HotkeyHelp, PolicyProfiles) overflowed 390px viewports: custom `max-w-lg/2xl/md` overrode shadcn's mobile cap `max-w-[calc(100%-2rem)]` via tailwind-merge; PLUS the dialog's single `auto` grid track let nowrap/`truncate` lines (e.g. the CAPTURES meta line) inflate min-content to ~461px and stretch every child. Fixes: (1) `max-w-*` → `sm:max-w-*` in all four dialogs; (2) new global rule `[data-slot='dialog-content'] { grid-template-columns: minmax(0,1fr) }` so the track is shrinkable and truncate works. Verified 390px: box 358px, 0 overflowing children, LOAD/DEL/SNAPSHOT visible (qa-r6-19/20/21).
+- THEME FIDELITY — desks now flip FULLY with the colourline: the `--color-k*` semantic family (kbg/kpanel/kheader/kborder*/kgrid/ktext/kdim/kfaint/kaccent*/kup/kdown/kwarn/kviolet/kteal/korange/kyellow/kzinc) was defined ONLY in the mk2 root @theme (static navy/cyan in BOTH themes — contrary to the file's own contract comment), so desk chrome stayed MK-II under HFT since round 1. Added a complete per-theme override block inside `[data-theme='hft']` matching ThemeTokens 'hft' 1:1 (kaccent #00ff66, kviolet #9d00ff, kpanel #08080c, kdown #ff1133, …; kcrit family intentionally invariant). Verified: desk 02 HFT = deep-purple bars, cyber-cyan curves, void-black panels (qa-r6-16) vs MK-II unchanged (qa-r6-17); computed vars #0f6/#9d00ff/#08080c live.
+- FEATURE — named layout presets (workspace snapshots): store gained `presets` (Record<name, WorkspaceSnapshot{activeTab,subTabs,selection,favs,savedAt}>), persisted under 'krupp-presets' (SEPARATE key — layout factory reset does NOT destroy presets), `savePreset(name, overwrite)` returning 'ok'|'overwrite-ok'|'overwrite-needed'|'full'|'invalid' (12-slot cap, 24-char names, validated load-time parse), `applyPreset` (validated restore + persist), `deletePreset`. New `src/components/krupp/WorkspacePresets.tsx`: theme-aware dialog with save row (armed CONFIRM OVERWRITE on name collision + status line), snapshot list (target tab label, ★ pin count, time-ago, LOAD + two-step DEL). Browser-verified end-to-end: save on landing, pin desk 02 + save (captured activeTab 2 + favs [2]), factory reset → ws null + presets intact → LOAD restored desk 02 + pin (qa-r6-08…12), overwrite flow, delete flow.
+- FEATURE wiring: P hotkey on the 13 desks toggles presets (landing keeps its plain-key routing); ⌘K WorkspacePalette gained "Layout presets" item (WORKSPACE group); footer legend gained clickable "P PRESETS" chip; breadcrumb rail gained compact palette + presets icon buttons (visible on ALL viewports — solves the round-5 small-viewport ⌘K note); WorkspaceHelp hotkey map + steering notes document presets.
+- QA notes: (1) agent-browser `console` output is a session-wide buffer — historical errors survive navigation; verify live errors by hooking console.error in-page (0 live duplicate-key errors in 10s; the "a592.03" storm seen in buffer is pre-fix history, round-4 aggregation intact). (2) Turbopack can MISS globals.css edits (touch doesn't change content; one real edit was dropped) — after CSS edits, append a comment to force a content change and verify the served chunk before browser QA. (3) eval context persists `const` declarations across calls in the same page — wrap in IIFEs or later calls silently fail with SyntaxError.
+- Verification: bun run lint CLEAN, tsc --noEmit clean for src/, browser-verified both colourlines on landing + desk 02, mobile 390px (rail triggers, dialog fit, footer wrap), preset lifecycle (save/overwrite/delete/load/reset-survival), zero live console errors. Screenshots qa-r6-01…qa-r6-22 in project root.
+
+Stage Summary:
+- The dual-colourline promise is now real on the 13 desks too (k* palette re-pointed per theme), all dialogs are mobile-safe, and the workspace gained persistent named layout presets reachable three ways (P hotkey, ⌘K palette, rail button) that survive the factory reset.
+- Notes for next round: (1) preset rows could offer a "duplicate/rename" action; (2) the London landing's own palette could gain the same presets entry (hoisting the london context remains the blocker); (3) touch-based reorder of the pinned rail is still mouse-only; (4) consider seeding a default "MORNING BOOK" preset on first boot for discoverability; (5) watch dev.log for commentary 429s — round-3 backoff continues to hold.
+
+---
+Task ID: 7
+Agent: Z.ai cron webDevReview (round 7)
+Task: Status assessment + agent-browser QA sweep, new features (preset rename/duplicate + MORNING BOOK first-boot seed, London landing palette NAVIGATE + WORKSPACE groups, global P hotkey + true P/P toggle), styling details, log-prefix cleanup.
+
+Work Log:
+- Status assessment: all services healthy (:3000 Next, :3030 krupp-stream, :81 gateway); landing live (~3.5-4.2k t/s, Market Pulse fills after tick-parity window, risk dial CALM→HIGH TOXICITY escalation handled with orange accents, IV surface + GEX populated); HFT↔MK-II flip re-verified both directions; desk hotkeys re-verified from desk context (5→METALS, Q→CRYPTO, L→EDGE; plain keys intentionally dead on landing); workspace restore + mobile 390px clean; 0 live console errors over a hooked 20s window; lint + tsc (src/) clean. Dev.log: commentary backoff holding, only historical 429s in old log regions.
+- FEATURE — preset rename + duplicate: store gained renamePreset(from,to) → 'ok'|'invalid'|'exists' (snapshot + savedAt preserved) and duplicatePreset(name) → 'ok'|'full'|'invalid' (copies under "NAME COPY" / "NAME #n", fresh savedAt), both persisted to 'krupp-presets'. WorkspacePresets dialog rows now carry pencil (inline rename input styled to the terminal, Enter commits / Esc cancels, accent-highlighted editing row, ✓/✗ buttons) and copy actions; status line reports RENAMED → … / DUPLICATED → … / NAME ALREADY IN USE (amber) / store full.
+- FEATURE — MORNING BOOK first-boot seed: seedPresetsOnFirstBoot() plants a demo snapshot (landing + pins [2,3]) ONLY when the 'krupp-presets' key has never existed; deleting every preset writes '{}' and is respected forever. Verified on a cleared profile: seed present after reload.
+- FEATURE — London landing ⌘K palette gains NAVIGATE + WORKSPACE (resolves the round-4/6 "hoisting the london context" blocker WITHOUT hoisting: the palette imports the krupp workspace store directly as `useWorkspace`). NAVIGATE: all 14 tabs with desk icons, hotkey hints (DESK_HOTKEY), ★ pin markers + ACTIVE highlight; click jumps (verified Desk 07 → FX FUTURES). WORKSPACE: "Colourline → <live target name>" executes the cut-over AND pushes a terminal log line; "Layout presets" opens the shared dialog (also logs). Browser-verified both commands end-to-end.
+- FEATURE — presetsOpen moved into the krupp store (UI slice): Shell no longer owns the dialog state; the desk ⌘K palette (onRequestPresets), footer chip, breadcrumb rail button, P hotkey AND the London palette all open the SAME dialog. P hotkey is now GLOBAL (works on the landing — P is not owned by the London terminal's key set). Regression-checked the desk-side palette presets entry.
+- BUGFIX (UX) — P is now a TRUE toggle: Radix autofocuses the dialog's first focusable element (the preset-name input), so a second P was swallowed by the Shell INPUT guard and the dialog could only be closed via Escape/X. Fixed with onOpenAutoFocus preventDefault on WorkspacePresets DialogContent — focus stays on body, P/P now open/close symmetrically (verified open→close→reopen→Escape).
+- CLEANUP — doubled terminal log prefixes: the terminal renders "[{source}] {message}" but ~12 log call sites ALSO prefixed their messages ("[ROUTING] [ROUTING] …"). Stripped the in-message prefixes across CommandPalette, useKruppFeed, optionsDesk, agentNotes, execution, london store, report, PolicyProfiles, ExecutionLedger, CboePanel, PrintReport. Verified single-prefix rendering live.
+- DOCS — WorkspaceHelp: P row now documents rename/duplicate + landing support; steering notes cover the landing ⌘K NAVIGATE/WORKSPACE groups + MORNING BOOK seed. London HotkeyHelp: new P + V rows (violet) and a "WORKSPACE (GLOBAL, EVERY TAB)" controls section.
+- Verification: bun run lint CLEAN; tsc --noEmit clean for src/; browser-verified: seed, rename (+conflict), duplicate, P/P toggle, P on landing, palette NAVIGATE jump, palette colourline cut-over (+ terminal log), palette→presets, desk-palette regression, both colourlines, mobile 390px presets fit, 0 live console errors. Screenshots qa-r7-01…qa-r7-21 in project root.
+
+Stage Summary:
+- Presets are now fully CRUD (save/load/rename/duplicate/delete) with a discoverable first-boot MORNING BOOK, reachable from EVERY surface (desks ⌘K, P hotkey anywhere, landing ⌘K WORKSPACE group, rail button); the landing terminal is no longer a workspace dead-end.
+- QA notes for next round: (1) agent-browser `press Escape` does NOT reliably reach Radix dialogs — a synthetic in-page `new KeyboardEvent('keydown', {key:'Escape'})` DOES close them, so app Escape handling is correct; verify dismissal via the X button / outside click / synthetic dispatch instead of trusting `press Escape`. (2) Long agent-browser sessions can hang CDP (Runtime.evaluate timeouts mid-session) — `agent-browser close` + fresh `open` resolves. (3) Remaining candidates: touch (pointer-event) reorder for the pinned rail, per-desk alert-sound differentiation, session-scoped CSV export, a "duplicate layout as new name" quick action in the ⌘K palettes, watch dev.log for commentary 429s (backoff held all round).
+
+---
+Task ID: 8
+Agent: Z.ai cron webDevReview (round 8→9)
+Task: Status assessment + agent-browser QA sweep, bug fixes (SystemHeader badge overlap @1280px, 6px doc bleed @390px, wrong London clock label), new features (session journal DB-backed, pointer-event drag reorder for pinned rail, sfx kernel with per-kind/per-desk audio), styling details.
+
+Work Log:
+- Status: all services healthy (Next :3000, krupp-stream :3030, gateway :81); landing + desks live; lint + tsc (src/) clean; commentary 429 backoff holding (historical only).
+- QA findings (agent-browser): (1) London SystemHeader middle token row OVERLAPPED the regime badge at exactly 1280px — measured: middle block squeezed to 381px vs 458px min-content (min-w-0 block, min-width:auto row bleeds), chip 704→854 vs banner 824→1022. (2) Same row caused a 6px DOCUMENT bleed at 390px (docW 396; Input min-w-[170px] + shrink-0 buttons). (3) London clock labelled "UTC+0" while rendering Europe/London local time (BST = UTC+1). Everything else clean: both colourlines, boot overlay, Market Pulse parity fill, presets CRUD, palettes, mobile dialogs, 0 live console errors.
+- BUGFIX — SystemHeader: outer container stacks below `min-[1360px]` (was xl:1280 — the only band where title+row+regime genuinely don't fit), inner token row + middle block get min-w-0/overflow-hidden clip guards, Input floor min-w-0→sm:150→1360:170, AuthChip floor 130/150. Verified: 1280px overlap=false, 390px docW=390, 1440px unchanged single-row (fits: 1345<1360 threshold… actually 1440>1360 → row layout, fits).
+- BUGFIX — LondonClock computes its real offset via Intl timeZoneName:'shortOffset' → label now reads "LONDON DESK · UTC+1" (BST), honest per DST.
+- FEATURE — SESSION JOURNAL (desk-side logbook): new Prisma model `JournalEntry` (clientId, desk, deskLabel snapshot, regime, score, text ≤400, indexes) + `bun run db:push`; new `/api/journal` (GET list+total, GET ?format=csv audit export, POST validated, DELETE by id); new `src/components/krupp/WorkspaceJournal.tsx` dialog (compose w/ live context stamps preview "STAMPS: 02 OPTIONS & RISK · CALM · SCORE 31.4", ⌘⏎ to log, char counter, newest-first list with desk badge + regime chip (theme-resolved tone) + UTC clock + time-ago + two-step DEL, CSV chip, empty state, J-toggle focus contract via onOpenAutoFocus preventDefault). Reachable from EVERYWHERE: J hotkey (global — landing AND desks), ⌘K workspace palette (WORKSPACE group), London landing palette (WORKSPACE group + terminal log line), breadcrumb-rail icon button (all viewports), footer legend "J JOURNAL" chip. Rows persist across reloads (SQLite). Browser-verified: log via UI, list refresh, two-step delete, reload persistence, mobile 390 fit, HFT theme adaptation.
+- FEATURE — pointer drag-to-reorder for the pinned quick rail: replaced HTML5 DnD with POINTER EVENTS (setPointerCapture + elementFromPoint + live moveFav swaps as the pointer crosses a chip) so mouse + touch + pen all work; dragged chip tilts (scale-110 rotate-2 + amber glow); click-after-drag suppressed via didDrag guard (cleared next tick so keyboard Enter still jumps); chips carry data-fav-tab + touch-none select-none. Verified: drag 02→03 reorders + persists, drag back restores, no tab jump.
+- FEATURE — presets dialog gains a "PINNED QUICK RAIL — REORDER" section (slot no., icon, label, ACTIVE highlight, JUMP button, ↑/↓ arrows driving the same persisted moveFav) — touch users on ANY viewport can now reorder (the footer rail is xl-only). Verified both directions + persistence.
+- FEATURE — sfx kernel `src/lib/krupp/sfx.ts`: one WebAudio voice for the whole workspace — 6 per-sentinel call signs (score G2/entropy A2/jerkZ B2/vix D3/contango E3/rho G3 two-note motifs; crit = sawtooth + doubled + octave cap), regime siren (620↔180 sweep + 440 warn blip, moved from useKruppFeed), desk-pitched crisis klaxon/recover chirp (+1 semitone per desk no. — METALS ≠ CRYPTO). Gate: kernel reads sfxOn OR london soundOn (setSfxGate injected in Shell mount + useKruppFeed effect). alerts.ts sfxSink now carries the AlertKind; useKruppFeed wires sfxAlert/sfxRegime. Shell: footer SFX chip (Volume2/VolumeX, aria-pressed, persisted 'krupp-sfx') + startCrisis/endCrisis fire desk-pitched klaxon/recover. ⌘K palette gained "Desk audio" + "Session journal" items. Docs updated: WorkspaceHelp (J row, drag note, journal + audio steering lines), London HotkeyHelp (J row + WORKSPACE section rewrite).
+- INFRA LESSON — stale prisma client after live `prisma generate`: an in-process "heal" (createRequire + require-cache eviction) DID restore new delegates once but later HARD-CRASHED the dev server under Turbopack (double native engine load suspected; plain node handles the identical sequence fine). db.ts was reverted to the STANDARD singleton with an explanatory post-mortem comment — after `prisma generate`, restart the dev server instead of healing. Also: the dev server OOM-dies when `tsc --noEmit` runs alongside the ~1.8GB next-server + headless chrome — run lint/tsc with the browser CLOSED.
+- OPS: dev server died twice (OOM SIGKILL, no trace in dev.log); restarted with `./node_modules/.bin/next dev -p 3000 2>&1 | tee -a dev.log` (background, append). NOTE: bare `next` is NOT on the non-interactive PATH — use the node_modules/.bin path.
+- Verification: bunx eslint exit 0; tsc --noEmit src/ errors 0; browser-verified end-to-end on fresh server: journal log/list/delete/persist, presets rail reorder, footer pointer drag, SFX toggle persistence, palette items, header overlap fix (1280), docW fix (390), HFT+MK-II flip, UTC+1 label, 0 live console errors. Screenshots qa-r9-01…qa-r9-09 in project root.
+
+Stage Summary:
+- The suite gained a persistent desk-side journal (SQLite + CSV export) reachable from every surface, pointer-based (touch-capable) rail reordering with a viewport-independent arrow fallback, and a unified sfx kernel with per-sentinel/per-desk audio identity; two long-standing layout bugs (1280px badge overlap, 390px document bleed) and a wrong clock label are fixed.
+- Notes for next round: (1) crisis auto-recovery timeout ends silently — consider a recover chirp from the engine tick path (needs a store-free hook); (2) journal rows are cross-profile shared (clientId stored, not filtered) — a "mine only" filter chip would be trivial on top of the existing GET; (3) consider a journal CSV anchor in the ⌘K REPORTING group (export already exists in the dialog); (4) keep the OOM lesson in mind: browser CLOSED for lint/tsc runs; (5) watch dev.log for commentary 429s (backoff held all round).
+---SEP---
+Caddyfile
+bun.lock
+components.json
+db
+dev.log
+download
+eslint.config.mjs
+examples
+mini-services
+next-env.d.ts
+next.config.ts
+node_modules
+package.json
+postcss.config.mjs
+prisma
+public
+qa-01-landing-mk2.png
+qa-02-landing-feed.png
+qa-03-gateway-feed.png
+qa-04-landing-hft.png
+qa-05-desk1-hft.png
+qa-06-desk1-mk2.png
+qa-07-desk7-fx.png
+qa-08-desk13-infra.png
+qa-09-crisis.png
+qa-10-mobile.png
+qa-11-london-final.png
+qa-12-london-worker.png
+qa-13-london-hft-live.png
+qa-r2-01.png
+qa-r2-02-ticker.png
+qa-r2-03-flash.png
+qa-r2-04-desk12.png
+qa-r2-05-mobile.png
+qa-r2-06-palette.png
+qa-r2-band.png
+qa-r2-final.png
+qa-r2-pdf-topstrip.png
+qa-r2-print-report.pdf
+qa-r2-print-v2.pdf
+qa-r2-print-v3.pdf
+qa-r2-print-v4.pdf
+qa-r2-print-v5.pdf
+qa-r2-print-v6.pdf
+qa-r2-print-v7.pdf
+qa-r2-print-v8.pdf
+qa-r2-print-v9.pdf
+qa-r3-01-landing.png
+qa-r3-02-hft.png
+qa-r3-03-hft-booted.png
+qa-r3-04-desk3-hft.png
+qa-r3-05-desk12.png
+qa-r3-06-landing-new.png
+qa-r3-07-pinned.png
+qa-r3-08-mk2-pinned.png
+qa-r3-09-mobile.png
+qa-r3-10-boot.png
+qa-r4-01-landing.png
+qa-r4-02-hft.png
+qa-r4-03-desk3.png
+qa-r4-04-desk3-click.png
+qa-r4-05-desk5.png
+qa-r4-06-help.png
+qa-r4-07-jump02.png
+qa-r4-08-reset.png
+qa-r4-09-csv.png
+qa-r4-10-help-mk2.png
+qa-r4-11-workspacehelp-mk2.png
+qa-r4-12-desk5-mk2.png
+qa-r4-13-mobile.png
+qa-r5-01-landing.png
+qa-r5-02-dial.png
+qa-r5-03-desk3.png
+qa-r5-04-desk3-hft.png
+qa-r5-05-desk3-hft.png
+qa-r5-06-desk3-hft.png
+qa-r5-07-mobile.png
+qa-r5-08-palette.png
+qa-r5-09-palette-export.png
+qa-r5-10-rail.png
+qa-r5-11-mobile-fixed.png
+qa-r5-12-landing-palette.png
+qa-r5-13-palette-hft.png
+qa-r5-14-palette-crisis.png
+qa-r5-15-crisis.png
+qa-r5-16-final.png
+qa-r6-01-landing.png
+qa-r6-02-landing-hft.png
+qa-r6-03-landing-hft2.png
+qa-r6-04-header-zoom.png
+qa-r6-05-sysheader.png
+qa-r6-06-sysheader-fixed.png
+qa-r6-07-sysheader-768.png
+qa-r6-08-presets-empty.png
+qa-r6-09-preset-saved.png
+qa-r6-10-two-presets.png
+qa-r6-11-presets-list.png
+qa-r6-12-overwrite-armed.png
+qa-r6-13-presets-hft.png
+qa-r6-14-presets-hft.png
+qa-r6-15-desk2-hft-fixed.png
+qa-r6-16-desk2-hft-full.png
+qa-r6-17-desk2-mk2.png
+qa-r6-18-mobile-desk2.png
+qa-r6-19-presets-mobile.png
+qa-r6-20-presets-mobile-fixed.png
+qa-r6-21-presets-mobile-v2.png
+qa-r6-22-final-desk.png
+qa-r7-01-landing.png
+qa-r7-02-london.png
+qa-r7-03-pulse.png
+qa-r7-04-hft.png
+qa-r7-05-desk7.png
+qa-r7-06-desk2-hft.png
+qa-r7-07-mobile.png
+qa-r7-09-presets-landing.png
+qa-r7-10-renamed.png
+qa-r7-11-conflict.png
+qa-r7-12-london-palette.png
+qa-r7-13-nav-search.png
+qa-r7-14-workspace-group.png
+qa-r7-15-cutover.png
+qa-r7-16-palette-presets.png
+qa-r7-17-presets-hft.png
+qa-r7-18-presets-mobile.png
+qa-r7-19-final.png
+qa-r7-20-final.png
+qa-r7-21-final.png
+qa-r8-01-landing.png
+qa-r8-02-gw-retest.png
+qa-r8-03-landing-warm.png
+qa-r8-04-landing-hft.png
+qa-r8-05-landing-hft-warm.png
+qa-r8-06-desk2-hft.png
+qa-r8-07-desk2-mk2.png
+qa-r8-08-presets.png
+qa-r8-09-mobile-desk.png
+qa-r8-10-mobile-landing.png
+qa-r8-11-mobile-palette.png
+qa-r9-01-header-fixed.png
+qa-r9-02-journal.png
+qa-r9-03-presets-rail.png
+qa-r9-04-presets-rail.png
+qa-r9-05-palette.png
+qa-r9-06-mobile-journal.png
+qa-r9-07-mobile-journal-hft.png
+qa-r9-08-final-mk2.png
+qa-r9-09-journal-live.png
+scripts
+skills
+src
+tailwind.config.ts
+tests
+tool-results
+tsconfig.json
+tsconfig.tsbuildinfo
+upload
+worklog.md

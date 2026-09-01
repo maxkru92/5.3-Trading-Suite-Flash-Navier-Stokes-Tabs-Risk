@@ -12,7 +12,7 @@
  * group), the footer legend chip and the compact breadcrumb-rail trigger.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, FileDown, NotebookPen, RotateCcw, SendHorizontal, TriangleAlert } from 'lucide-react';
+import { Check, FileDown, NotebookPen, RotateCcw, SendHorizontal, TriangleAlert, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useKrupp as useWorkspace } from '@/lib/krupp/store';
 import { useKrupp as useLondon } from '@/lib/london/store';
@@ -20,6 +20,7 @@ import { KT } from '@/lib/theme';
 import { TABS } from './tabs';
 
 const MAX_TEXT = 400;
+const MINE_KEY = 'krupp-journal-mine'; // persisted scope: 'all' | 'mine'
 
 interface JournalRow {
   id: string;
@@ -29,6 +30,7 @@ interface JournalRow {
   regime: string;
   score: number;
   text: string;
+  mine: boolean;
 }
 
 function timeAgo(ts: number): string {
@@ -61,36 +63,54 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
   const [text, setText] = useState('');
   const [rows, setRows] = useState<JournalRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [mineTotal, setMineTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<{ msg: string; warn: boolean } | null>(null);
   const [armedDelete, setArmedDelete] = useState<string | null>(null);
+  const [onlyMine, setOnlyMine] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem(MINE_KEY) === 'mine';
+    } catch {
+      return false;
+    }
+  });
   const listRef = useRef<HTMLDivElement>(null);
 
   const tabLabel = TABS[activeTab]?.label ?? `TAB ${activeTab}`;
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (scope: boolean) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/journal?limit=80', { cache: 'no-store' });
+      const q = new URLSearchParams({ limit: '80', mine: clientId() });
+      if (scope) q.set('only', 'mine');
+      const res = await fetch(`/api/journal?${q.toString()}`, { cache: 'no-store' });
       const j = await res.json();
       if (j?.ok) {
         setRows(j.entries as JournalRow[]);
         setTotal(j.total as number);
+        setMineTotal((j.mineTotal as number) ?? 0);
       }
     } catch { /* journal service unavailable — keep the desk running */ } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- clientId() is a stable store method
 
   // load on every open — the journal is shared with other tabs/profiles
   useEffect(() => {
     if (open) {
-      void refresh();
+      void refresh(onlyMine);
       setStatus(null);
       setArmedDelete(null);
     }
-  }, [open, refresh]);
+  }, [open, onlyMine, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const flipScope = (mine: boolean) => {
+    setOnlyMine(mine);
+    try {
+      window.localStorage.setItem(MINE_KEY, mine ? 'mine' : 'all');
+    } catch { /* storage unavailable */ }
+  };
 
   const post = async () => {
     const body = text.trim();
@@ -114,7 +134,7 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
       if (j?.ok) {
         setText('');
         setStatus({ msg: 'NOTE LOGGED TO THE SESSION JOURNAL', warn: false });
-        await refresh();
+        await refresh(onlyMine);
         requestAnimationFrame(() => listRef.current?.scrollTo({ top: 0, behavior: 'smooth' }));
       } else {
         setStatus({ msg: String(j?.error ?? 'LOG FAILED').toUpperCase(), warn: true });
@@ -136,8 +156,10 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
       const res = await fetch(`/api/journal?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
       const j = await res.json();
       if (j?.ok) {
+        const wasMine = rows.find((x) => x.id === id)?.mine ?? false;
         setRows((r) => r.filter((x) => x.id !== id));
         setTotal((t) => Math.max(0, t - 1));
+        if (wasMine) setMineTotal((m) => Math.max(0, m - 1));
         setStatus({ msg: 'NOTE STRUCK FROM THE JOURNAL', warn: false });
       }
     } catch { /* keep the desk running */ }
@@ -199,13 +221,15 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
             <button
               onClick={() => {
                 const a = document.createElement('a');
-                a.href = '/api/journal?format=csv';
+                const q = new URLSearchParams({ format: 'csv', mine: clientId() });
+                if (onlyMine) q.set('only', 'mine');
+                a.href = `/api/journal?${q.toString()}`;
                 a.download = '';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
               }}
-              title="Export the full journal as CSV"
+              title={onlyMine ? 'Export MY journal rows as CSV' : 'Export the full journal as CSV'}
               aria-label="Export journal CSV"
               className="flex shrink-0 items-center rounded border border-kborder2 bg-kpanel p-1.5 text-muted-foreground transition-colors hover:border-kaccent/70 hover:text-foreground"
             >
@@ -226,9 +250,42 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
 
         {/* ---- entries ---- */}
         <div className="border border-kborder bg-kbg-deep rounded-sm p-2">
-          <div className="mb-1.5 flex items-center justify-between text-[8px] tracking-[0.2em] text-muted-foreground">
+          <div className="mb-1.5 flex items-center justify-between gap-2 text-[8px] tracking-[0.2em] text-muted-foreground">
             <span>LOGGED NOTES — NEWEST FIRST</span>
-            <span className="font-mono text-[8px] text-muted-foreground/70">{total} TOTAL</span>
+            {/* scope selector — ALL rows vs this profile's own notes (persisted) */}
+            <div className="flex items-center gap-1.5">
+              <div
+                role="radiogroup"
+                aria-label="Journal scope"
+                className="flex items-center overflow-hidden rounded-sm border border-kborder2"
+              >
+                {([
+                  { k: false, label: 'ALL' },
+                  { k: true, label: 'MINE' },
+                ] as const).map(({ k, label }) => {
+                  const active = onlyMine === k;
+                  return (
+                    <button
+                      key={label}
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => flipScope(k)}
+                      title={k ? `Show only this profile's notes (${mineTotal})` : 'Show all profiles\u2019 notes'}
+                      className={`flex items-center gap-1 px-1.5 py-px font-mono text-[8px] font-bold tracking-[0.16em] transition-colors ${
+                        active ? 'bg-kaccent/15' : 'bg-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                      style={active ? { color: KT('accent') } : undefined}
+                    >
+                      {k && <User size={8} aria-hidden />}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="font-mono text-[8px] tabular-nums text-muted-foreground/70">
+                {onlyMine ? `${rows.length}/${mineTotal} MINE · ${total} TOTAL` : `${total} TOTAL · ${mineTotal} MINE`}
+              </span>
+            </div>
           </div>
           <div ref={listRef} className="krupp-scroll flex max-h-64 flex-col gap-1 overflow-y-auto pr-0.5">
             {loading && rows.length === 0 && (
@@ -250,14 +307,32 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
                 <div
                   key={r.id}
                   className={`rounded-sm border px-2 py-1.5 transition-colors ${
-                    deleting ? 'border-rose-500/70 bg-rose-950/30' : 'border-kinset bg-kpanel/60 hover:border-kborder4'
+                    deleting
+                      ? 'border-rose-500/70 bg-rose-950/30'
+                      : r.mine
+                        ? 'bg-kpanel/60 hover:border-kborder4'
+                        : 'border-kinset bg-kpanel/60 hover:border-kborder4'
                   }`}
+                  style={
+                    !deleting && r.mine
+                      ? { borderColor: `${KT('accent')}45`, boxShadow: `inset 2px 0 0 ${KT('accent')}55` }
+                      : undefined
+                  }
                 >
                   <div className="flex items-center gap-1.5 font-mono text-[8.5px] tracking-[0.1em] text-muted-foreground">
                     <span className="shrink-0 rounded-sm border border-kborder2 bg-kheader px-1 py-px font-bold text-foreground/90" title={r.deskLabel || 'Landing terminal'}>
                       {String(r.desk).padStart(2, '0')}
                     </span>
                     <span className="truncate">{(r.deskLabel || 'LONDON EDGE').toUpperCase()}</span>
+                    {r.mine && (
+                      <span
+                        className="shrink-0 rounded-sm px-1 py-px font-bold tracking-[0.1em]"
+                        style={{ color: KT('accent'), background: `${KT('accent')}14` }}
+                        title="Logged from this profile"
+                      >
+                        MINE
+                      </span>
+                    )}
                     <span
                       className="shrink-0 rounded-sm px-1 py-px font-bold"
                       style={{ color: tone.c, background: tone.bg }}
@@ -292,7 +367,7 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
         </div>
 
         <div className="text-[7.5px] tracking-[0.14em] text-muted-foreground font-mono">
-          KRUPP CAPITAL // SESSION JOURNAL · /API/JOURNAL (SQLITE) · J HOTKEY ANYWHERE · ⌘⏎ TO LOG · ⌘K WORKSPACE GROUP
+          KRUPP CAPITAL // SESSION JOURNAL · /API/JOURNAL (SQLITE) · J HOTKEY ANYWHERE · ⌘⏎ TO LOG · ⌘K WORKSPACE GROUP · SCOPE PERSISTS
         </div>
       </DialogContent>
     </Dialog>

@@ -144,6 +144,20 @@ export default function Shell() {
     }
   }, [theme]);
 
+  /* ---- r10: crisis auto-recovery all-clear — the engine tick loop ends the
+   * lockdown when the timer expires with NO UI involved; the engine announces
+   * it on the window bus and the shell answers with the desk-pitched recover
+   * chirp (gate-checked in the sfx kernel). The manual TERMINATE button used
+   * to own this call — now every end path (auto + manual + palette) chirps
+   * exactly once, here. ---- */
+  useEffect(() => {
+    const onCrisisEnd = () => {
+      sfxDesk(useKrupp.getState().activeTab, 'recover');
+    };
+    window.addEventListener('krupp:crisis-end', onCrisisEnd);
+    return () => window.removeEventListener('krupp:crisis-end', onCrisisEnd);
+  }, []);
+
   /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
          F pin/unpin active desk · P layout presets (anywhere) · J session
          journal (anywhere) · V colourline · ? workspace map · ⌘K palette
@@ -400,7 +414,8 @@ export default function Shell() {
               <button
                 onClick={() => {
                   endCrisis();
-                  sfxDesk(useKrupp.getState().activeTab, 'recover');
+                  // recover chirp now fires from the krupp:crisis-end listener
+                  // (r10) — manual terminate must not double-play it
                 }}
                 className="crisis-blink flex items-center gap-2 rounded border border-rose-500 bg-rose-950/70 px-4 py-2 font-mono text-[11px] font-black tracking-[0.2em] text-rose-200 shadow-[0_0_24px_rgba(225,29,72,0.35)]"
               >

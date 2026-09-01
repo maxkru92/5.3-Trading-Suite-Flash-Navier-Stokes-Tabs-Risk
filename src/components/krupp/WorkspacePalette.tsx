@@ -189,6 +189,15 @@ export function WorkspacePalette({
             Export vol snapshot series (CBOE tape · CSV)
             <span className="ml-auto font-mono text-[9px] text-muted-foreground">krupp-volhistory-*.csv</span>
           </CommandItem>
+          <CommandItem
+            value="export session journal csv logbook notes audit observation"
+            onSelect={run(() => csvDownload('/api/journal?format=csv'))}
+            className="font-mono text-[11px]"
+          >
+            <NotebookPen size={13} style={{ color: KT('warn') }} aria-hidden />
+            Export session journal (desk logbook · CSV)
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground">krupp-journal-*.csv</span>
+          </CommandItem>
         </CommandGroup>
         <CommandSeparator />
 

@@ -273,6 +273,16 @@ export function CommandPalette() {
           })} className="font-mono text-[11px]">
             <FileDown size={13} style={{ color: K.orange }} /> Export vol snapshot series <span className="ml-auto text-muted-foreground text-[9px]">CSV · CBOE + risk strip</span>
           </CommandItem>
+          <CommandItem onSelect={run(() => {
+            const a = document.createElement('a')
+            a.href = '/api/journal?format=csv'
+            a.download = ''
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+          })} className="font-mono text-[11px]">
+            <NotebookPen size={13} style={{ color: K.green }} /> Export session journal <span className="ml-auto text-muted-foreground text-[9px]">CSV · desk-side logbook</span>
+          </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="VIEW">

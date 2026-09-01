@@ -7,7 +7,9 @@ import { db } from '@/lib/db'
 // a stable per-browser clientId ('krupp-client-id') and are CSV-exportable
 // alongside the execution ledger.
 //   GET    ?limit=N — latest entries (newest first) + totals
-//   GET    ?format=csv — full journal export (audit trail)
+//   GET    ?mine=<clientId> — stamp each row with { mine } for the caller
+//   GET    ?only=mine — server-side filter to the caller's rows (needs ?mine=)
+//   GET    ?format=csv — full journal export (audit trail; honours only=mine)
 //   POST   { clientId, desk, deskLabel, regime, score, text }
 //   DELETE ?id=… — remove a single note (two-step confirm in the UI)
 
@@ -16,10 +18,13 @@ const MAX_TEXT = 400
 export async function GET(req: NextRequest) {
   try {
     const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? 60)))
+    const mine = String(req.nextUrl.searchParams.get('mine') ?? '').slice(0, 80) || null
+    const onlyMine = Boolean(mine) && req.nextUrl.searchParams.get('only') === 'mine'
+    const where = onlyMine && mine ? { clientId: mine } : undefined
 
     // --- full journal CSV export: ?format=csv ---------------------------------
     if (req.nextUrl.searchParams.get('format') === 'csv') {
-      const all = await db.journalEntry.findMany({ orderBy: { createdAt: 'asc' }, take: 5000 })
+      const all = await db.journalEntry.findMany({ where, orderBy: { createdAt: 'asc' }, take: 5000 })
       const esc = (v: unknown): string => {
         const s = v == null ? '' : String(v)
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
@@ -41,16 +46,18 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const [rows, total] = await Promise.all([
-      db.journalEntry.findMany({ orderBy: { createdAt: 'desc' }, take: limit }),
-      db.journalEntry.count(),
+    const [rows, total, mineTotal] = await Promise.all([
+      db.journalEntry.findMany({ where, orderBy: { createdAt: 'desc' }, take: limit }),
+      db.journalEntry.count({ where }),
+      mine ? db.journalEntry.count({ where: { clientId: mine } }) : Promise.resolve(0),
     ])
     return NextResponse.json({
       ok: true,
       total,
+      mineTotal,
       entries: rows.map((r) => ({
         id: r.id, ts: r.createdAt.getTime(), desk: r.desk, deskLabel: r.deskLabel,
-        regime: r.regime, score: r.score, text: r.text,
+        regime: r.regime, score: r.score, text: r.text, mine: Boolean(mine) && r.clientId === mine,
       })),
     })
   } catch (e) {

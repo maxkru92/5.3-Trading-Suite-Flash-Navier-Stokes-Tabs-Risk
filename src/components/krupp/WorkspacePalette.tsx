@@ -19,10 +19,11 @@ import {
   CommandItem, CommandList, CommandSeparator,
 } from '@/components/ui/command';
 import {
-  Bookmark, FileDown, Keyboard, NotebookPen, Palette, RotateCcw, Square, Star,
+  Bookmark, ClipboardList, FileDown, Keyboard, NotebookPen, Palette, RotateCcw, Square, Star,
   TriangleAlert, Volume2, VolumeX,
 } from 'lucide-react';
 import { useKrupp, useRevision } from '@/lib/krupp/store';
+import { useKrupp as useLondon } from '@/lib/london/store';
 import { useTheme, THEMES, KT } from '@/lib/theme';
 import { ms, startCrisis, endCrisis } from '@/lib/krupp/engine';
 import { DESK_HOTKEY, TABS } from './tabs';
@@ -43,12 +44,14 @@ export function WorkspacePalette({
   onRequestHelp,
   onRequestPresets,
   onRequestJournal,
+  onRequestDigest,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onRequestHelp: () => void;
   onRequestPresets: () => void;
   onRequestJournal: () => void;
+  onRequestDigest: () => void;
 }) {
   useRevision(); // keeps the crisis group honest while the palette is open
   const theme = useTheme((s) => s.theme);
@@ -127,6 +130,32 @@ export function WorkspacePalette({
             <span className="ml-auto font-mono text-[9px] text-muted-foreground">P</span>
           </CommandItem>
           <CommandItem
+            value="snapshot current layout quick save auto name preset book now capture"
+            onSelect={run(() => {
+              // one-keystroke capture: layout under an auto UTC-stamped name
+              // (second-resolution stamp keeps collisions impossible without
+              // an overwrite prompt inside the palette)
+              const st = useKrupp.getState();
+              const d = new Date();
+              const p = (n: number) => String(n).padStart(2, '0');
+              const name = `BOOK ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}Z`;
+              const res = st.savePreset(name);
+              // feedback lands in the landing terminal's log (visible next
+              // visit — the palette itself has no status line)
+              useLondon.getState().pushLog({
+                id: `snap-${Date.now()}`, ts: Date.now(), source: 'SYSTEM', level: res === 'ok' ? 'info' : 'warn',
+                message: res === 'ok'
+                  ? `Layout captured as preset "${name}" (tab, sub-tabs, selections, pins).`
+                  : `Preset capture failed (${res}) — preset store may be full (12 slots).`,
+              });
+            })}
+            className="font-mono text-[11px]"
+          >
+            <Star size={13} style={{ color: KT('warn') }} aria-hidden />
+            Capture layout → auto-named preset
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground">BOOK HH:MM:SSZ</span>
+          </CommandItem>
+          <CommandItem
             value="session journal notes logbook log observation desk notebook"
             onSelect={run(onRequestJournal)}
             className="font-mono text-[11px]"
@@ -171,6 +200,15 @@ export function WorkspacePalette({
 
         {/* ------------- audit exports ------------- */}
         <CommandGroup heading="REPORTING — AUDIT EXPORTS">
+          <CommandItem
+            value="post-mortem digest session brief report summary workspace ledger journal copy export"
+            onSelect={run(onRequestDigest)}
+            className="font-mono text-[11px]"
+          >
+            <ClipboardList size={13} style={{ color: KT('accent') }} aria-hidden />
+            Post-mortem digest — workspace + ledger + journal brief
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground">G · copy / export .txt</span>
+          </CommandItem>
           <CommandItem
             value="export execution ledger csv blotter fills audit"
             onSelect={run(() => csvDownload('/api/ledger?format=csv'))}

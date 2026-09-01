@@ -62,6 +62,8 @@ interface KruppState {
   presetsOpen: boolean;
   /** shared UI slice — the session-journal dialog (J hotkey, ⌘K, rail chip) */
   journalOpen: boolean;
+  /** shared UI slice — the post-mortem digest dialog (G hotkey, ⌘K, rail chip) */
+  digestOpen: boolean;
   setActiveTab(t: number): void;
   setSubTab(desk: number, i: number): void;
   select(key: string, sym: string): void;
@@ -88,6 +90,8 @@ interface KruppState {
   setPresetsOpen(v: boolean): void;
   /** open/close the session-journal dialog (global UI slice) */
   setJournalOpen(v: boolean): void;
+  /** open/close the post-mortem digest dialog (global UI slice) */
+  setDigestOpen(v: boolean): void;
   /** flip the master sfx gate (persisted) */
   toggleSfx(): void;
   /** stable per-browser desk identity for journal rows ('krupp-client-id') */
@@ -216,8 +220,10 @@ export const useKrupp = create<KruppState>()((set, get) => ({
   sfxOn: hydrateSfx(),
   presetsOpen: false,
   journalOpen: false,
+  digestOpen: false,
   setPresetsOpen: (v) => set({ presetsOpen: v }),
   setJournalOpen: (v) => set({ journalOpen: v }),
+  setDigestOpen: (v) => set({ digestOpen: v }),
   toggleSfx: () => {
     const sfxOn = !get().sfxOn;
     set({ sfxOn });

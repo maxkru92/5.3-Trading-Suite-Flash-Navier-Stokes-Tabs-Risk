@@ -45,19 +45,26 @@ export function CrashPanel() {
       aria-label="Market liquidity crash simulator"
     >
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-        <div className="flex items-center gap-2 shrink-0 min-w-0">
+        {/* r10 FIX — shrink-0 pinned the ~500px description line, starving the
+            control rows inside the lg panel row (24px doc bleed at 1024).
+            Shrinkable + truncated now: full text on narrow viewports lives in
+            the title attribute. */}
+        <div className="flex items-center gap-2 min-w-0" title="Bypasses API flow · negative shock cascade · volume detonation · interceptor arming test">
           <Flame size={16} style={{ color: K.red }} className={active ? 'anim-blink-fast' : ''} aria-hidden />
           <div className="min-w-0">
-            <h2 className="text-[11px] font-black tracking-[0.18em]" style={{ color: K.red }}>
+            <h2 className="text-[11px] font-black tracking-[0.18em] truncate" style={{ color: K.red }}>
               SIMULATE MARKET LIQUIDITY CRASH
             </h2>
-            <p className="text-[8px] tracking-[0.14em] text-muted-foreground">
+            <p className="text-[8px] tracking-[0.14em] text-muted-foreground truncate">
               BYPASSES API FLOW · NEGATIVE SHOCK CASCADE · VOLUME DETONATION · INTERCEPTOR ARMING TEST
             </p>
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 min-w-0">
+        {/* r10 — sm:flex-wrap lets the three control rows WRAP AS UNITS in the
+            640–1023 band (slider / cascade / buttons each keep their content
+            size instead of shrinking to nothing or bleeding the document). */}
+        <div className="flex-1 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 min-w-0">
           <div className="flex items-center gap-2 flex-1 min-w-[180px]">
             <span className="text-[9px] tracking-[0.16em] text-muted-foreground shrink-0">SEVERITY</span>
             <Slider
@@ -87,6 +94,10 @@ export function CrashPanel() {
             </Select>
           </div>
 
+          {/* r10 FIX — the row keeps shrink-0 (the shrinking title above absorbs
+              the deficit now); flex-wrap stays as the last-resort guard so the
+              buttons wrap INSIDE the panel instead of bleeding the document
+              (was a 91px doc bleed at 1280 / 24px at 1024). */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
             <Button
               type="button"

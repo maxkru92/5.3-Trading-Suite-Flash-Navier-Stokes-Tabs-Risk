@@ -94,7 +94,7 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
     } catch { /* journal service unavailable — keep the desk running */ } finally {
       setLoading(false);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- clientId() is a stable store method
+  }, []); // clientId() is a stable store method
 
   // load on every open — the journal is shared with other tabs/profiles
   useEffect(() => {
@@ -103,7 +103,7 @@ export function WorkspaceJournal({ open, onOpenChange }: { open: boolean; onOpen
       setStatus(null);
       setArmedDelete(null);
     }
-  }, [open, onlyMine, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, onlyMine, refresh]);
 
   const flipScope = (mine: boolean) => {
     setOnlyMine(mine);

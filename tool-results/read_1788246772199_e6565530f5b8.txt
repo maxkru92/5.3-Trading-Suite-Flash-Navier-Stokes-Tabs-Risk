@@ -1,0 +1,599 @@
+     1→'use client';
+     2→/**
+     3→ * KRUPP CAPITAL TRADING SUITE — Workspace Shell (MK-III)
+     4→ * 14-tab matrix: LONDON STRATEGIC EDGE landing terminal + 13 institutional
+     5→ * desks + persistent crisis steering block + dual-colourline switch.
+     6→ *
+     7→ * State guardrails: the market engine, L3 workers, infra telemetry and all
+     8→ * series live at module scope. Mounting/unmounting desks never clears
+     9→ * background calculations or disconnects streaming workers.
+    10→ *
+    11→ * Colourlines: every surface/chart token resolves through src/lib/theme.ts.
+    12→ * A theme flip remounts the workspace (key={theme}) so every canvas redraws
+    13→ * against the new palette; module-scope engines keep running uninterrupted.
+    14→ */
+    15→import { useEffect, useRef, useState } from 'react';
+    16→import { Bookmark, NotebookPen, SquareTerminal, TriangleAlert, ShieldCheck, Star, Volume2, VolumeX } from 'lucide-react';
+    17→import { bootstrapKrupp, ms, startCrisis, endCrisis } from '@/lib/krupp/engine';
+    18→import { infra } from '@/lib/krupp/infraservice';
+    19→import { useKrupp, useRevision } from '@/lib/krupp/store';
+    20→import { useKrupp as useLondon } from '@/lib/london/store';
+    21→import { setSfxGate, sfxDesk } from '@/lib/krupp/sfx';
+    22→import { fClock, fCountdown, fN, fPx, fPct } from '@/lib/krupp/format';
+    23→import { hydrateTheme, useTheme, THEMES } from '@/lib/theme';
+    24→import { ThemeSwitcher } from './ThemeSwitcher';
+    25→import { CrisisOverlay } from './CrisisOverlay';
+    26→import { WorkspaceHelp } from './WorkspaceHelp';
+    27→import { WorkspacePalette } from './WorkspacePalette';
+    28→import { WorkspacePresets } from './WorkspacePresets';
+    29→import { WorkspaceJournal } from './WorkspaceJournal';
+    30→import { TABS } from './tabs';
+    31→
+    32→function UtcClock(): React.ReactElement {
+    33→  const [t, setT] = useState<number>(() => Date.now());
+    34→  useEffect(() => {
+    35→    const id = setInterval(() => setT(Date.now()), 1000);
+    36→    return () => clearInterval(id);
+    37→  }, []);
+    38→  return <span className="font-mono text-[11px] text-zinc-300">{fClock(t)}</span>;
+    39→}
+    40→
+    41→function HeaderChip({ label, value, tone = 'text-zinc-300' }: { label: string; value: string; tone?: string }) {
+    42→  return (
+    43→    <div className="hidden items-center gap-1.5 rounded border border-kborder2 bg-kpanel px-2 py-1 md:flex">
+    44→      <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">{label}</span>
+    45→      <span className={`font-mono text-[10.5px] font-semibold ${tone}`}>{value}</span>
+    46→    </div>
+    47→  );
+    48→}
+    49→
+    50→function InterceptorChip({
+    51→  name,
+    52→  engaged,
+    53→  onClick,
+    54→}: {
+    55→  name: string;
+    56→  engaged: boolean;
+    57→  onClick: () => void;
+    58→}) {
+    59→  return (
+    60→    <button
+    61→      onClick={onClick}
+    62→      title="Toggle pre-trade interceptor"
+    63→      className={`flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[9.5px] font-semibold uppercase tracking-wider transition-colors ${
+    64→        engaged
+    65→          ? 'border-rose-500/70 bg-rose-950/60 text-rose-300'
+    66→          : 'border-amber-700/60 bg-kpanel text-amber-400/80'
+    67→      }`}
+    68→    >
+    69→      <span className={`h-1.5 w-1.5 rounded-full ${engaged ? 'animate-pulse bg-rose-400' : 'bg-amber-500/70'}`} />
+    70→      {name}
+    71→      <span className={engaged ? 'text-rose-400' : 'text-amber-600/80'}>{engaged ? 'ENGAGED' : 'ARMED'}</span>
+    72→    </button>
+    73→  );
+    74→}
+    75→
+    76→/** Live engine readout chip for the workspace breadcrumb rail (5 Hz).
+    77→ *  Direction changes fire a one-shot price flash (green/red pulse).
+    78→ *  Flash bookkeeping lives at module scope — same guardrail pattern as the
+    79→ *  market engine (ms.inst): background state survives tab switches. */
+    80→const TICKER_DIR = new Map<string, 'up' | 'dn'>();
+    81→const TICKER_FLASH = new Map<string, number>();
+    82→
+    83→function TickerChip({ sym, label }: { sym: string; label?: string }) {
+    84→  useRevision(); // 5 Hz re-render so direction flips are observed
+    85→  const inst = ms.inst[sym];
+    86→  if (!inst) return null;
+    87→  const up = inst.changePct >= 0;
+    88→  const d = up ? 'up' : 'dn';
+    89→  if (TICKER_DIR.get(sym) !== d) {
+    90→    TICKER_DIR.set(sym, d);
+    91→    TICKER_FLASH.set(sym, (TICKER_FLASH.get(sym) ?? 0) + 1);
+    92→  }
+    93→  const flash = TICKER_FLASH.get(sym) ?? 0;
+    94→  return (
+    95→    <span className="hidden items-center gap-1.5 rounded border border-kborder2 bg-kpanel px-1.5 py-0.5 md:inline-flex" title={inst.def.name}>
+    96→      <span className="font-mono text-[9px] tracking-wider text-zinc-500">{label ?? sym.replace('1!', '')}</span>
+    97→      <span
+    98→        key={flash}
+    99→        className={`font-mono text-[10px] font-semibold tabular-nums ${up ? 'text-emerald-400' : 'text-rose-400'} ${flash > 0 ? (up ? 'flash-green' : 'flash-red') : ''}`}
+   100→      >
+   101→        {fPx(inst.last, inst.def.dec)}
+   102→      </span>
+   103→      <span className={`font-mono text-[9px] tabular-nums ${up ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
+   104→        {fPct(inst.changePct)}
+   105→      </span>
+   106→    </span>
+   107→  );
+   108→}
+   109→
+   110→export default function Shell() {
+   111→  const [mounted, setMounted] = useState(false);
+   112→  useEffect(() => {
+   113→    hydrateTheme();
+   114→    bootstrapKrupp();
+   115→    // sfx kernel gate — sound is on when EITHER terminal's alarm switch is on
+   116→    setSfxGate(() => useKrupp.getState().sfxOn || useLondon.getState().soundOn);
+   117→    setMounted(true);
+   118→  }, []);
+   119→
+   120→  const theme = useTheme((s) => s.theme);
+   121→  const activeTab = useKrupp((s) => s.activeTab);
+   122→  const setActiveTab = useKrupp((s) => s.setActiveTab);
+   123→  const favs = useKrupp((s) => s.favs);
+   124→  const toggleFav = useKrupp((s) => s.toggleFav);
+   125→  const sfxOn = useKrupp((s) => s.sfxOn);
+   126→  const journalOpen = useKrupp((s) => s.journalOpen);
+   127→  const setJournalOpen = useKrupp((s) => s.setJournalOpen);
+   128→  /* r9 — POINTER drag-to-reorder for the pinned quick rail: pointer events
+   129→   * (not HTML5 DnD) so mouse, touch AND pen all reorder; live moveFav swaps
+   130→   * as the pointer crosses a neighbouring chip. Click-after-drag is folded
+   131→   * back into a plain jump via the didDrag guard. */
+   132→  const [dragFav, setDragFav] = useState<number | null>(null);
+   133→  const dragFavRef = useRef<number | null>(null);
+   134→  const didDragRef = useRef(false);
+   135→  useRevision(); // 5 Hz re-render of status surfaces
+   136→
+   137→  /* ---- colourline cut-over flash (rendered OUTSIDE the keyed workspace) ---- */
+   138→  const [flash, setFlash] = useState(0);
+   139→  const prevTheme = useRef(theme);
+   140→  useEffect(() => {
+   141→    if (prevTheme.current !== theme) {
+   142→      prevTheme.current = theme;
+   143→      setFlash((f) => f + 1);
+   144→    }
+   145→  }, [theme]);
+   146→
+   147→  /* ---- r10: crisis auto-recovery all-clear — the engine tick loop ends the
+   148→   * lockdown when the timer expires with NO UI involved; the engine announces
+   149→   * it on the window bus and the shell answers with the desk-pitched recover
+   150→   * chirp (gate-checked in the sfx kernel). The manual TERMINATE button used
+   151→   * to own this call — now every end path (auto + manual + palette) chirps
+   152→   * exactly once, here. ---- */
+   153→  useEffect(() => {
+   154→    const onCrisisEnd = () => {
+   155→      sfxDesk(useKrupp.getState().activeTab, 'recover');
+   156→    };
+   157→    window.addEventListener('krupp:crisis-end', onCrisisEnd);
+   158→    return () => window.removeEventListener('krupp:crisis-end', onCrisisEnd);
+   159→  }, []);
+   160→
+   161→  /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
+   162→         F pin/unpin active desk · P layout presets (anywhere) · J session
+   163→         journal (anywhere) · V colourline · ? workspace map · ⌘K palette
+   164→         (the LONDON EDGE tab routes plain 1/2/3/C/R/T + ? + ⌘K to its own
+   165→         terminal: 1/2/3 symbols, C crash, R reset, T engage, ? HotkeyHelp,
+   166→         ⌘K desk palette — P, J and V stay workspace-global) ---- */
+   167→  const [helpOpen, setHelpOpen] = useState(false);
+   168→  const [paletteOpen, setPaletteOpen] = useState(false);
+   169→  const presetsOpen = useKrupp((s) => s.presetsOpen);
+   170→  const setPresetsOpen = useKrupp((s) => s.setPresetsOpen);
+   171→  useEffect(() => {
+   172→    const onKey = (e: KeyboardEvent) => {
+   173→      const el = e.target as HTMLElement | null;
+   174→      const tag = el?.tagName;
+   175→      if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return;
+   176→      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+   177→        // on desks the workspace palette owns ⌘K; the landing terminal
+   178→        // (LondonEdge) keeps its own palette — both listeners never coexist
+   179→        if (activeTab !== 0) {
+   180→          e.preventDefault();
+   181→          setPaletteOpen((o) => !o);
+   182→        }
+   183→        return;
+   184→      }
+   185→      if (e.metaKey || e.ctrlKey || e.altKey) return;
+   186→      if (e.key.toLowerCase() === 'v') {
+   187→        e.preventDefault();
+   188→        useTheme.getState().toggleTheme();
+   189→        return;
+   190→      }
+   191→      if (e.key.toLowerCase() === 'f' && activeTab !== 0) {
+   192→        e.preventDefault();
+   193→        toggleFav(activeTab);
+   194→        return;
+   195→      }
+   196→      if (e.key.toLowerCase() === 'p') {
+   197→        e.preventDefault();
+   198→        setPresetsOpen(!useKrupp.getState().presetsOpen);
+   199→        return;
+   200→      }
+   201→      if (e.key.toLowerCase() === 'j') {
+   202→        e.preventDefault();
+   203→        setJournalOpen(!useKrupp.getState().journalOpen);
+   204→        return;
+   205→      }
+   206→      if (activeTab === 0) return; // landing terminal owns plain keys + ?
+   207→      if (e.key === '?') {
+   208→        e.preventDefault();
+   209→        setHelpOpen((o) => !o);
+   210→        return;
+   211→      }
+   212→      const map: Record<string, number> = {
+   213→        l: 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
+   214→        '6': 6, '7': 7, '8': 8, '9': 9, '0': 10, q: 11, w: 12, e: 13,
+   215→      };
+   216→      const idx = map[e.key.toLowerCase()];
+   217→      if (idx !== undefined) {
+   218→        e.preventDefault();
+   219→        setActiveTab(idx);
+   220→      }
+   221→    };
+   222→    window.addEventListener('keydown', onKey);
+   223→    return () => window.removeEventListener('keydown', onKey);
+   224→  }, [activeTab, setActiveTab, toggleFav, setPresetsOpen, setJournalOpen]);
+   225→
+   226→  if (!mounted) {
+   227→    return (
+   228→      <div className="flex min-h-screen flex-col items-center justify-center bg-kbg">
+   229→        <div className="font-mono text-2xl font-black tracking-[0.4em] text-zinc-200">KRUPP CAPITAL</div>
+   230→        <div className="mt-2 font-mono text-[11px] tracking-[0.3em] text-kaccent-strong/80">
+   231→          TRADING SUITE // MK-III · DUAL COLOURLINE
+   232→        </div>
+   233→        <div className="mt-6 h-1 w-56 overflow-hidden rounded bg-kpanel2">
+   234→          <div className="krupp-boot h-full w-1/3 bg-kaccent-strong" />
+   235→        </div>
+   236→        <div className="mt-3 font-mono text-[10px] text-zinc-500">CALIBRATING VOLATILITY ENGINES…</div>
+   237→      </div>
+   238→    );
+   239→  }
+   240→
+   241→  const crisis = ms.crisis;
+   242→  const tps = infra.tps.length > 0 ? infra.tps.last() : 0;
+   243→  const lat = infra.ws.length > 0 ? infra.ws.reduce((a, w) => a + w.latency, 0) / infra.ws.length : 0;
+   244→  const tokenLeft = infra.tokens.length > 0 ? Math.min(...infra.tokens.map((t) => t.expAt - Date.now())) : 0;
+   245→  const engaging = (offsetMs: number): boolean =>
+   246→    crisis.active && Date.now() - crisis.startedAt >= offsetMs;
+   247→
+   248→  const tab = TABS[activeTab] ?? TABS[0];
+   249→  const Active = tab.Comp;
+   250→  const Icon = tab.icon;
+   251→
+   252→  return (
+   253→    <>
+   254→      {/* colourline cut-over sweep — above the workspace, never intercepts input */}
+   255→      {flash > 0 && (
+   256→        <div key={flash} className="theme-cut pointer-events-none fixed inset-0 z-[95]" aria-hidden />
+   257→      )}
+   258→      <div
+   259→        key={theme}
+   260→        className="flex min-h-screen flex-col bg-kbg text-zinc-200 print:bg-white"
+   261→      >
+   262→      <CrisisOverlay />
+   263→      <WorkspaceHelp open={helpOpen} onOpenChange={setHelpOpen} />
+   264→      <WorkspacePresets open={presetsOpen} onOpenChange={setPresetsOpen} />
+   265→      <WorkspaceJournal open={journalOpen} onOpenChange={setJournalOpen} />
+   266→      {tab.deskNo !== undefined && (
+   267→        <WorkspacePalette
+   268→          open={paletteOpen}
+   269→          onOpenChange={setPaletteOpen}
+   270→          onRequestHelp={() => setHelpOpen(true)}
+   271→          onRequestPresets={() => setPresetsOpen(true)}
+   272→          onRequestJournal={() => setJournalOpen(true)}
+   273→        />
+   274→      )}
+   275→
+   276→      {/* ------------- header (hidden on print while the LONDON EDGE A4 report owns the paper) ------------- */}
+   277→      <header className={`sticky top-0 z-40 border-b border-kborder bg-kheader/95 backdrop-blur ${tab.deskNo === undefined ? 'print:hidden' : ''}`}>
+   278→        <div className="flex items-center justify-between gap-3 px-3 py-2">
+   279→          <div className="flex items-center gap-3">
+   280→            <div className={`flex h-8 w-8 items-center justify-center rounded border ${crisis.active ? 'border-rose-500/70 bg-rose-950/50' : 'border-kborder2 bg-kpanel'}`}>
+   281→              {crisis.active ? (
+   282→                <TriangleAlert className="crisis-blink h-4.5 w-4.5 text-rose-400" size={18} />
+   283→              ) : (
+   284→                <ShieldCheck className="h-4.5 w-4.5 text-kaccent" size={18} />
+   285→              )}
+   286→            </div>
+   287→            <div>
+   288→              <div className="font-mono text-[13px] font-black leading-none tracking-[0.22em] text-zinc-100">
+   289→                KRUPP CAPITAL
+   290→              </div>
+   291→              <div className="font-mono text-[8.5px] tracking-[0.34em] text-zinc-500">
+   292→                TRADING SUITE // LONDON EDGE + 13-DESK MATRIX
+   293→              </div>
+   294→            </div>
+   295→          </div>
+   296→          <div className="flex items-center gap-1.5">
+   297→            <ThemeSwitcher />
+   298→            <HeaderChip label="L3 FEED" value="LIVE" tone="text-emerald-400" />
+   299→            <HeaderChip label="TICKS/S" value={fN(tps, 0)} tone="text-kaccent-soft" />
+   300→            <HeaderChip label="WS LAT" value={`${fN(lat, 0)}ms`} tone={lat > 120 ? 'text-amber-400' : 'text-zinc-300'} />
+   301→            <HeaderChip label="AUTH TTL" value={fCountdown(tokenLeft)} tone={tokenLeft < 15000 ? 'text-amber-400' : 'text-zinc-300'} />
+   302→            <div className="rounded border border-kborder2 bg-kpanel px-2 py-1">
+   303→              <UtcClock />
+   304→            </div>
+   305→          </div>
+   306→        </div>
+   307→
+   308→        {/* ------------- 14-tab bar (LONDON EDGE + 13 desks, ★ = pinned) ------------- */}
+   309→        <nav className="krupp-scroll flex gap-0.5 overflow-x-auto px-2" aria-label="Desk navigation">
+   310→          {TABS.map((t, i) => {
+   311→            const TIcon = t.icon;
+   312→            const active = i === activeTab;
+   313→            const pinned = favs.includes(i);
+   314→            return (
+   315→              <button
+   316→                key={t.label}
+   317→                onClick={() => setActiveTab(i)}
+   318→                aria-current={active ? 'page' : undefined}
+   319→                title={t.deskNo ? `${t.label} — desk ${String(t.deskNo).padStart(2, '0')}${pinned ? ' (pinned)' : ''}` : t.label}
+   320→                className={`group relative flex shrink-0 items-center gap-1.5 px-2.5 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider outline-none transition-colors focus-visible:ring-1 focus-visible:ring-kaccent/70 ${
+   321→                  active ? t.accent : 'text-zinc-500 hover:text-zinc-300'
+   322→                }`}
+   323→              >
+   324→                <TIcon size={12} strokeWidth={2.2} />
+   325→                <span className="hidden lg:inline">{t.label}</span>
+   326→                <span className="lg:hidden">{t.deskNo ? String(t.deskNo).padStart(2, '0') : '◆'}</span>
+   327→                {t.deskNo !== undefined && (
+   328→                  <span
+   329→                    role="button"
+   330→                    tabIndex={-1}
+   331→                    aria-label={pinned ? `Unpin ${t.label}` : `Pin ${t.label}`}
+   332→                    aria-pressed={pinned}
+   333→                    onClick={(e) => {
+   334→                      e.stopPropagation();
+   335→                      toggleFav(i);
+   336→                    }}
+   337→                    className={`-mr-0.5 ml-0.5 rounded-sm p-0.5 transition-all hover:scale-110 ${
+   338→                      pinned ? 'text-amber-300 drop-shadow-[0_0_4px_rgba(252,211,77,0.8)]' : 'text-zinc-700 opacity-0 hover:text-amber-300 group-hover:opacity-100 focus-visible:opacity-100'
+   339→                    }`}
+   340→                  >
+   341→                    <Star size={9} strokeWidth={2.6} fill={pinned ? 'currentColor' : 'none'} />
+   342→                  </span>
+   343→                )}
+   344→                <span
+   345→                  className={`absolute inset-x-1 bottom-0 h-0.5 rounded-full transition-all ${t.bar} ${
+   346→                    active
+   347→                      ? 'opacity-100 shadow-[0_0_10px_var(--glow-accent,rgba(34,211,238,0.65))]'
+   348→                      : pinned
+   349→                        ? 'opacity-60'
+   350→                        : 'opacity-0'
+   351→                  }`}
+   352→                />
+   353→              </button>
+   354→            );
+   355→          })}
+   356→        </nav>
+   357→      </header>
+   358→
+   359→      {/* ------------- active workspace ------------- */}
+   360→      <main className="flex-1 px-2 py-3 md:px-3">
+   361→        <div className="mb-2 flex items-center gap-2 font-mono text-[10px] tracking-widest text-zinc-600 print:hidden">
+   362→          <Icon size={12} />
+   363→          <span>
+   364→            {tab.deskNo
+   365→              ? `DESK ${String(tab.deskNo).padStart(2, '0')} / 13 — ${tab.label}`
+   366→              : `LANDING TERMINAL — ${tab.label} // L3 RISK DESK`}
+   367→          </span>
+   368→          <span className="ml-1 hidden items-center gap-1.5 lg:inline-flex" aria-hidden>
+   369→            <span className="h-3 w-px bg-kborder2" />
+   370→          </span>
+   371→          <TickerChip sym="ES1!" label="ES" />
+   372→          <TickerChip sym="NQ1!" label="NQ" />
+   373→          <TickerChip sym="VIX" label="VIX" />
+   374→          <TickerChip sym="BTC-USD" label="BTC" />
+   375→          {/* right side — engine tick + compact workspace triggers (palette + presets reachable on small viewports) */}
+   376→          <span className="ml-auto flex items-center gap-1.5">
+   377→            <span className="hidden sm:inline">ENGINE TICK #{fN(ms.tickCount, 0)}</span>
+   378→            {tab.deskNo !== undefined && (
+   379→              <button
+   380→                onClick={() => setPaletteOpen((o) => !o)}
+   381→                title="Workspace command palette (⌘K) — navigate, colourline, exports, crisis"
+   382→                aria-label="Open workspace command palette"
+   383→                className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"
+   384→              >
+   385→                <SquareTerminal size={12} aria-hidden />
+   386→              </button>
+   387→            )}
+   388→            <button
+   389→              onClick={() => setPresetsOpen(!presetsOpen)}
+   390→              title="Layout presets (P) — save / load named workspace snapshots"
+   391→              aria-label="Open layout presets"
+   392→              className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"
+   393→            >
+   394→              <Bookmark size={12} aria-hidden />
+   395→            </button>
+   396→            <button
+   397→              onClick={() => setJournalOpen(!journalOpen)}
+   398→              title="Session journal (J) — desk-side logbook, notes stamp desk + regime + score"
+   399→              aria-label="Open session journal"
+   400→              className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"
+   401→            >
+   402→              <NotebookPen size={12} aria-hidden />
+   403→            </button>
+   404→          </span>
+   405→        </div>
+   406→        <Active />
+   407→      </main>
+   408→
+   409→      {/* ------------- persistent steering block (hidden on print with the landing report) ------------- */}
+   410→      <footer className={`sticky bottom-0 z-40 border-t border-kborder bg-kheader/97 pb-[env(safe-area-inset-bottom)] backdrop-blur ${tab.deskNo === undefined ? 'print:hidden' : ''}`}>
+   411→        <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+   412→          {crisis.active ? (
+   413→            <>
+   414→              <button
+   415→                onClick={() => {
+   416→                  endCrisis();
+   417→                  // recover chirp now fires from the krupp:crisis-end listener
+   418→                  // (r10) — manual terminate must not double-play it
+   419→                }}
+   420→                className="crisis-blink flex items-center gap-2 rounded border border-rose-500 bg-rose-950/70 px-4 py-2 font-mono text-[11px] font-black tracking-[0.2em] text-rose-200 shadow-[0_0_24px_rgba(225,29,72,0.35)]"
+   421→              >
+   422→                <TriangleAlert size={14} />
+   423→                SYSTEMIC LOCKDOWN ACTIVE — TERMINATE
+   424→              </button>
+   425→              <div className="font-mono text-[10px] tracking-wider text-rose-400">
+   426→                AUTO-RECOVERY T-{fCountdown(Math.max(0, crisis.endsAt - Date.now()))} · INTENSITY{' '}
+   427→                {(crisis.intensity * 100).toFixed(0)}% · CYCLE #{crisis.count}
+   428→              </div>
+   429→            </>
+   430→          ) : (
+   431→            <button
+   432→              onClick={() => {
+   433→                startCrisis();
+   434→                sfxDesk(useKrupp.getState().activeTab, 'crisis');
+   435→              }}
+   436→              className="flex items-center gap-2 rounded border border-rose-700/80 bg-gradient-to-b from-kcrit-deep to-kcrit-black px-4 py-2 font-mono text-[11px] font-black tracking-[0.2em] text-rose-300 transition-all hover:border-rose-500 hover:shadow-[0_0_24px_rgba(225,29,72,0.3)] active:scale-[0.98]"
+   437→            >
+   438→              <TriangleAlert size={14} />
+   439→              SIMULATE MARKET LIQUIDITY CRASH
+   440→            </button>
+   441→          )}
+   442→
+   443→          <div className="ml-auto flex w-full flex-wrap items-center justify-center gap-1.5 sm:w-auto sm:justify-end">
+   444→            {/* master sfx gate — desk crisis klaxon + all workspace chirps;
+   445→                the landing SystemHeader alarm toggle flips the same kernel */}
+   446→            <button
+   447→              onClick={() => useKrupp.getState().toggleSfx()}
+   448→              aria-pressed={sfxOn}
+   449→              title={sfxOn ? 'Mute desk audio (alerts, crisis klaxon)' : 'Enable desk audio — per-sentinel call signs + crisis klaxon'}
+   450→              className={`flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[9.5px] font-semibold uppercase tracking-wider transition-colors ${
+   451→                sfxOn ? 'border-kaccent/60 bg-kaccent/10' : 'border-kborder2 bg-kpanel text-zinc-500'
+   452→              }`}
+   453→            >
+   454→              {sfxOn ? <Volume2 size={13} className="text-kaccent" aria-hidden /> : <VolumeX size={13} aria-hidden />}
+   455→              SFX
+   456→            </button>
+   457→            <InterceptorChip
+   458→              name="Block Mean Reversion"
+   459→              engaged={engaging(400) && ms.interceptors.blockMR}
+   460→              onClick={() => {
+   461→                ms.interceptors.blockMR = !ms.interceptors.blockMR;
+   462→              }}
+   463→            />
+   464→            <InterceptorChip
+   465→              name="Reduce Size"
+   466→              engaged={engaging(900) && ms.interceptors.reduceSize}
+   467→              onClick={() => {
+   468→                ms.interceptors.reduceSize = !ms.interceptors.reduceSize;
+   469→              }}
+   470→            />
+   471→            <InterceptorChip
+   472→              name="Emergency Flattening"
+   473→              engaged={engaging(1400) && ms.interceptors.flatten}
+   474→              onClick={() => {
+   475→                ms.interceptors.flatten = !ms.interceptors.flatten;
+   476→              }}
+   477→            />
+   478→          </div>
+   479→        </div>
+   480→        <div className="flex items-center justify-between gap-3 border-t border-kinset px-3 py-1 font-mono text-[9px] tracking-wider text-zinc-600">
+   481→          <span className="flex items-center gap-2">
+   482→            <span className="hidden md:inline">KRUPP CAPITAL // INSTITUTIONAL TERMINAL MK-III — ALL FEEDS SIMULATED IN-SANDBOX</span>
+   483→            <span className="md:hidden">KRUPP CAPITAL // MK-III</span>
+   484→            <span className="hidden items-center gap-1 lg:flex" aria-hidden>
+   485→              <span className="h-2.5 w-px bg-kborder2" />
+   486→            </span>
+   487→            <span className="hidden items-center gap-1.5 lg:flex" title="Workspace hotkeys — plain keys are live on the 13 desks; the landing terminal keeps its own routing keys">
+   488→              <kbd className="kbd-hint">L</kbd> EDGE
+   489→              <kbd className="kbd-hint">1-9</kbd><kbd className="kbd-hint">0</kbd> DESK 01-10
+   490→              <kbd className="kbd-hint">Q</kbd><kbd className="kbd-hint">W</kbd><kbd className="kbd-hint">E</kbd> DESK 11-13
+   491→              <kbd className="kbd-hint">F</kbd> PIN
+   492→              <button
+   493→                onClick={() => setPresetsOpen(true)}
+   494→                title="Layout presets — save / load named workspace snapshots"
+   495→                className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+   496→              >
+   497→                <kbd className="kbd-hint">P</kbd> PRESETS
+   498→              </button>
+   499→              <button
+   500→                onClick={() => setJournalOpen(true)}
+   501→                title="Session journal — desk-side logbook (⌘⏎ to log, CSV export inside)"
+   502→                className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+   503→              >
+   504→                <kbd className="kbd-hint">J</kbd> JOURNAL
+   505→              </button>
+   506→              <kbd className="kbd-hint">V</kbd> COLOURLINE
+   507→              {activeTab !== 0 && (
+   508→                <>
+   509→                  <button
+   510→                    onClick={() => setPaletteOpen((o) => !o)}
+   511→                    title="Workspace command palette — navigate, colourline, exports, crisis"
+   512→                    className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+   513→                  >
+   514→                    <kbd className="kbd-hint">⌘K</kbd> COMMANDS
+   515→                  </button>
+   516→                  <button
+   517→                    onClick={() => setHelpOpen(true)}
+   518→                    title="Workspace hotkey map & layout reset"
+   519→                    className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+   520→                  >
+   521→                    <kbd className="kbd-hint">?</kbd> HELP
+   522→                  </button>
+   523→                </>
+   524→              )}
+   525→            </span>
+   526→            {/* pinned-desk quick rail — click to jump, POINTER-DRAG to reorder
+   527→                (mouse + touch + pen — pointer capture, live moveFav swaps) */}
+   528→            {favs.length > 0 && (
+   529→              <span className="hidden items-center gap-1 xl:flex" aria-label="Pinned desks">
+   530→                <span className="h-2.5 w-px bg-kborder2" aria-hidden />
+   531→                <Star size={8} className="text-amber-300" aria-hidden />
+   532→                {favs.map((i, pos) => (
+   533→                  <button
+   534→                    key={i}
+   535→                    data-fav-tab={i}
+   536→                    onPointerDown={(e) => {
+   537→                      if (e.pointerType === 'mouse' && e.button !== 0) return;
+   538→                      dragFavRef.current = i;
+   539→                      didDragRef.current = false;
+   540→                      setDragFav(i);
+   541→                      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* capture unavailable */ }
+   542→                    }}
+   543→                    onPointerMove={(e) => {
+   544→                      if (dragFavRef.current === null) return;
+   545→                      const chip = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-fav-tab]') as HTMLElement | null;
+   546→                      if (!chip) return;
+   547→                      const target = Number(chip.dataset.favTab);
+   548→                      const cur = dragFavRef.current;
+   549→                      if (Number.isInteger(target) && target !== cur && favs.includes(target)) {
+   550→                        didDragRef.current = true;
+   551→                        useKrupp.getState().moveFav(cur, target);
+   552→                        dragFavRef.current = target;
+   553→                        setDragFav(target);
+   554→                      }
+   555→                    }}
+   556→                    onPointerUp={(e) => {
+   557→                      if (dragFavRef.current !== null) {
+   558→                        try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* already released */ }
+   559→                        dragFavRef.current = null;
+   560→                        setDragFav(null);
+   561→                        // the click that follows a real drag is swallowed by
+   562→                        // didDragRef — clear the guard on the NEXT tick so
+   563→                        // keyboard activation still jumps
+   564→                        setTimeout(() => { didDragRef.current = false; }, 0);
+   565→                      }
+   566→                    }}
+   567→                    onPointerCancel={() => {
+   568→                      dragFavRef.current = null;
+   569→                      setDragFav(null);
+   570→                    }}
+   571→                    onClick={() => {
+   572→                      if (didDragRef.current) return; // a drag, not a jump
+   573→                      setActiveTab(i);
+   574→                    }}
+   575→                    title={`Jump to desk ${String(i).padStart(2, '0')} — ${TABS[i]?.label ?? ''} · drag to reorder (slot ${pos + 1})`}
+   576→                    className={`cursor-grab touch-none select-none rounded-sm border px-1 font-mono text-[8.5px] font-bold tracking-wider outline-none transition-all focus-visible:ring-1 focus-visible:ring-kaccent/70 active:cursor-grabbing ${
+   577→                      dragFav === i
+   578→                        ? 'scale-110 rotate-2 border-amber-300 bg-amber-400/25 text-amber-100 shadow-[0_0_12px_rgba(252,211,77,0.55)]'
+   579→                        : i === activeTab
+   580→                          ? 'border-amber-400/80 bg-amber-400/15 text-amber-200'
+   581→                          : 'border-amber-400/25 bg-amber-400/5 text-amber-300/70 hover:border-amber-400/60 hover:text-amber-200'
+   582→                    }`}
+   583→                  >
+   584→                    {String(i).padStart(2, '0')}
+   585→                  </button>
+   586→                ))}
+   587→              </span>
+   588→            )}
+   589→          </span>
+   590→          <span className="hidden sm:inline">
+   591→            ENGINE {fN(tps, 0)} tps · REV {useKrupp.getState().revision} · COLOURLINE {THEMES[useTheme.getState().theme].name}
+   592→          </span>
+   593→        </div>
+   594→      </footer>
+   595→      </div>
+   596→    </>
+   597→  );
+   598→}
+   599→

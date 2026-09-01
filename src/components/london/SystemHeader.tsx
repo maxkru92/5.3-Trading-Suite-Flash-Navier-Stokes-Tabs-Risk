@@ -170,6 +170,14 @@ export function SystemHeader() {
           regime badge (and bled the document 6px at 390px). Stack below
           1360px (where title+row+regime genuinely fit), clip the block as a
           hard guard, and let the input/chip floors breathe on small screens. */}
+      {/* r10 FIX — the middle block now stacks at EVERY width: its ≥1280
+          xl:flex-row variant flexed the token row (~358px of shrink-0
+          controls at min-content) against the auth chip (~300px); at 1440
+          the outer ≥1360 row starved the token row to 235px and its
+          shrink-0 children painted OVER the AUTH / MINT L3 buttons.
+          360 title + 358 row + 300 chip + 467 regime ≈ 1487px simply does
+          not fit 1440 — column layout (row on top, chip beneath) is the
+          only honest arrangement and matches the <1360 look. */}
       <div className="mx-auto max-w-[1800px] px-2.5 sm:px-4 py-2 flex flex-col min-[1360px]:flex-row min-[1360px]:items-center gap-2">
         {/* Title banner */}
         <div className="flex items-center gap-2.5 min-w-0 shrink max-w-[360px]">
@@ -191,7 +199,7 @@ export function SystemHeader() {
         </div>
 
         {/* Firebase token control */}
-        <div className="flex-1 flex flex-col xl:flex-row xl:items-center gap-1.5 xl:justify-center min-w-0 w-full xl:w-auto overflow-hidden">
+        <div className="flex-1 flex flex-col gap-1.5 justify-center min-w-0 w-full overflow-hidden">
           <div className="flex items-center gap-1.5 flex-1 min-h-[28px] min-w-0">
             <KeyRound size={13} className="text-muted-foreground shrink-0" aria-hidden />
             <Input

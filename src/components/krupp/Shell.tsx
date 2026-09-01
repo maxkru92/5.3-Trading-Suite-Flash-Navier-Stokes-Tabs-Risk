@@ -13,7 +13,7 @@
  * against the new palette; module-scope engines keep running uninterrupted.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, NotebookPen, SquareTerminal, TriangleAlert, ShieldCheck, Star, Volume2, VolumeX } from 'lucide-react';
+import { Bookmark, ClipboardList, NotebookPen, SquareTerminal, TriangleAlert, ShieldCheck, Star, Volume2, VolumeX } from 'lucide-react';
 import { bootstrapKrupp, ms, startCrisis, endCrisis } from '@/lib/krupp/engine';
 import { infra } from '@/lib/krupp/infraservice';
 import { useKrupp, useRevision } from '@/lib/krupp/store';
@@ -27,6 +27,7 @@ import { WorkspaceHelp } from './WorkspaceHelp';
 import { WorkspacePalette } from './WorkspacePalette';
 import { WorkspacePresets } from './WorkspacePresets';
 import { WorkspaceJournal } from './WorkspaceJournal';
+import { WorkspaceDigest } from './WorkspaceDigest';
 import { TABS } from './tabs';
 
 function UtcClock(): React.ReactElement {
@@ -125,6 +126,8 @@ export default function Shell() {
   const sfxOn = useKrupp((s) => s.sfxOn);
   const journalOpen = useKrupp((s) => s.journalOpen);
   const setJournalOpen = useKrupp((s) => s.setJournalOpen);
+  const digestOpen = useKrupp((s) => s.digestOpen);
+  const setDigestOpen = useKrupp((s) => s.setDigestOpen);
   /* r9 — POINTER drag-to-reorder for the pinned quick rail: pointer events
    * (not HTML5 DnD) so mouse, touch AND pen all reorder; live moveFav swaps
    * as the pointer crosses a neighbouring chip. Click-after-drag is folded
@@ -160,10 +163,11 @@ export default function Shell() {
 
   /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
          F pin/unpin active desk · P layout presets (anywhere) · J session
-         journal (anywhere) · V colourline · ? workspace map · ⌘K palette
+         journal (anywhere) · G post-mortem digest (anywhere) · V colourline ·
+         ? workspace map · ⌘K palette
          (the LONDON EDGE tab routes plain 1/2/3/C/R/T + ? + ⌘K to its own
          terminal: 1/2/3 symbols, C crash, R reset, T engage, ? HotkeyHelp,
-         ⌘K desk palette — P, J and V stay workspace-global) ---- */
+         ⌘K desk palette — P, J, G and V stay workspace-global) ---- */
   const [helpOpen, setHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const presetsOpen = useKrupp((s) => s.presetsOpen);
@@ -201,6 +205,11 @@ export default function Shell() {
       if (e.key.toLowerCase() === 'j') {
         e.preventDefault();
         setJournalOpen(!useKrupp.getState().journalOpen);
+        return;
+      }
+      if (e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        useKrupp.getState().setDigestOpen(!useKrupp.getState().digestOpen);
         return;
       }
       if (activeTab === 0) return; // landing terminal owns plain keys + ?
@@ -263,6 +272,7 @@ export default function Shell() {
       <WorkspaceHelp open={helpOpen} onOpenChange={setHelpOpen} />
       <WorkspacePresets open={presetsOpen} onOpenChange={setPresetsOpen} />
       <WorkspaceJournal open={journalOpen} onOpenChange={setJournalOpen} />
+      <WorkspaceDigest open={digestOpen} onOpenChange={setDigestOpen} />
       {tab.deskNo !== undefined && (
         <WorkspacePalette
           open={paletteOpen}
@@ -270,6 +280,7 @@ export default function Shell() {
           onRequestHelp={() => setHelpOpen(true)}
           onRequestPresets={() => setPresetsOpen(true)}
           onRequestJournal={() => setJournalOpen(true)}
+          onRequestDigest={() => setDigestOpen(true)}
         />
       )}
 
@@ -374,7 +385,10 @@ export default function Shell() {
           <TickerChip sym="BTC-USD" label="BTC" />
           {/* right side — engine tick + compact workspace triggers (palette + presets reachable on small viewports) */}
           <span className="ml-auto flex items-center gap-1.5">
-            <span className="hidden sm:inline">ENGINE TICK #{fN(ms.tickCount, 0)}</span>
+            {/* r10 — md floor: at 768 the label + four rail triggers overflowed
+                the breadcrumb strip by 19px (doc bleed); the tick count is
+                decorative here — the footer + header already carry tps */}
+            <span className="hidden md:inline">ENGINE TICK #{fN(ms.tickCount, 0)}</span>
             {tab.deskNo !== undefined && (
               <button
                 onClick={() => setPaletteOpen((o) => !o)}
@@ -400,6 +414,14 @@ export default function Shell() {
               className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"
             >
               <NotebookPen size={12} aria-hidden />
+            </button>
+            <button
+              onClick={() => setDigestOpen(!digestOpen)}
+              title="Post-mortem digest (G) — workspace + ledger + journal brief"
+              aria-label="Open post-mortem digest"
+              className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"
+            >
+              <ClipboardList size={12} aria-hidden />
             </button>
           </span>
         </div>
@@ -502,6 +524,13 @@ export default function Shell() {
                 className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
               >
                 <kbd className="kbd-hint">J</kbd> JOURNAL
+              </button>
+              <button
+                onClick={() => setDigestOpen(true)}
+                title="Post-mortem digest — workspace + ledger + journal brief, copyable/exportable"
+                className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+              >
+                <kbd className="kbd-hint">G</kbd> DIGEST
               </button>
               <kbd className="kbd-hint">V</kbd> COLOURLINE
               {activeTab !== 0 && (

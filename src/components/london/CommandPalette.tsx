@@ -7,7 +7,7 @@
 
 import { useEffect } from 'react'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
-import { AlertOctagon, Bell, BellRing, Bookmark, Crosshair, Eraser, FileDown, FileText, FolderDown, Keyboard, KeyRound, NotebookPen, Palette, Play, Printer, Radio, RotateCcw, ShieldHalf, Skull, Sparkles, Square, Star, Volume2, VolumeX } from 'lucide-react'
+import { AlertOctagon, Bell, BellRing, Bookmark, ClipboardList, Crosshair, Eraser, FileDown, FileText, FolderDown, Keyboard, KeyRound, NotebookPen, Palette, Play, Printer, Radio, RotateCcw, ShieldHalf, Skull, Sparkles, Square, Star, Volume2, VolumeX } from 'lucide-react'
 import { useKrupp } from '@/lib/london/store'
 import { useKruppApi } from '@/lib/london/context'
 import { ledger } from '@/lib/london/execution'
@@ -247,6 +247,9 @@ export function CommandPalette() {
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="REPORTING">
+          <CommandItem onSelect={run(() => { useWorkspace.getState().setDigestOpen(true) })} className="font-mono text-[11px]">
+            <ClipboardList size={13} style={{ color: K.cyan }} /> Post-mortem digest <span className="ml-auto text-muted-foreground text-[9px]">workspace + ledger + journal · G</span>
+          </CommandItem>
           <CommandItem onSelect={run(() => void downloadRiskReport())} className="font-mono text-[11px]">
             <FileText size={13} style={{ color: K.cyan }} /> Export risk report <span className="ml-auto text-muted-foreground text-[9px]">markdown snapshot</span>
           </CommandItem>

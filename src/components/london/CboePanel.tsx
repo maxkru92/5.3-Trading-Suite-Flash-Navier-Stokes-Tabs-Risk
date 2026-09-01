@@ -300,7 +300,7 @@ export function CboePanel() {
       a.remove()
       useKrupp.getState().pushLog({
         id: `vcsv-${Date.now()}`, ts: Date.now(), source: 'CBOE', level: 'info',
-        message: '[CBOE] Volatility snapshot series exported to CSV (audit stream).',
+        message: 'Volatility snapshot series exported to CSV (audit stream).',
       })
     } finally {
       setTimeout(() => setCsvBusy(false), 1200)

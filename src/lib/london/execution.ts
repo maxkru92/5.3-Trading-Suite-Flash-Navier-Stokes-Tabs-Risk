@@ -116,7 +116,7 @@ class ExecutionLedger {
       st.bumpBlocks()
       st.pushLog({
         id: rid(), ts: Date.now(), source: 'RISK', level: 'warn',
-        message: `[RISK] Ticket ${side} ${qty}x ${sym} BLOCKED by [LOCK] — Shannon chaos ${m.entropy.toFixed(3)} > 0.85, counter-trend flow rejected.`,
+        message: `Ticket ${side} ${qty}x ${sym} BLOCKED by [LOCK] — Shannon chaos ${m.entropy.toFixed(3)} > 0.85, counter-trend flow rejected.`,
       })
       requestTradeNote(
         `BLOCKED ticket: ${side} ${qty}x ${sym} rejected by LOCK interceptor (Shannon chaos ${m.entropy.toFixed(2)} > 0.85). Momentum ${(mom).toFixed(2)}. Composite ${m.score.toFixed(0)}.`,

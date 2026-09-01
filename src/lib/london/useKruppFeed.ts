@@ -160,13 +160,13 @@ export function useKruppFeed() {
         const prev = lastRegime.current
         lastRegime.current = m.regime
         if (m.regime === 'CRISIS') {
-          pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'crit', message: `[RISK] COMPOSITE SCORE ${m.score.toFixed(1)} — CRITICAL SYSTEMIC CRISIS. MEAN REVERSION INTERCEPTED.` })
+          pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'crit', message: `COMPOSITE SCORE ${m.score.toFixed(1)} — CRITICAL SYSTEMIC CRISIS. MEAN REVERSION INTERCEPTED.` })
           if (useKrupp.getState().soundOn) playSiren('crisis')
         } else if (m.regime === 'HIGH' && prev === 'CALM') {
-          pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'warn', message: `[RISK] Composite score ${m.score.toFixed(1)} — HIGH TOXICITY. Scaling offsets engaged.` })
+          pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'warn', message: `Composite score ${m.score.toFixed(1)} — HIGH TOXICITY. Scaling offsets engaged.` })
           if (useKrupp.getState().soundOn) playSiren('warn')
         } else if (m.regime === 'CALM') {
-          pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'info', message: `[RISK] Composite score ${m.score.toFixed(1)} — STATE TENSOR NORMAL.` })
+          pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'info', message: `Composite score ${m.score.toFixed(1)} — STATE TENSOR NORMAL.` })
         }
       }
       // interceptor transitions
@@ -189,7 +189,7 @@ export function useKruppFeed() {
       // fluid shock overlay
       if (m.shock !== lastShock.current) {
         lastShock.current = m.shock
-        if (m.shock) pushLog({ id: `${Date.now()}-j`, ts: Date.now(), source: 'MATH', level: 'warn', message: `[MATH] Jerk Z=${m.jerkZ.toFixed(2)} > 3.0 — HEAVY VOLATILITY SHOCK DETECTED.` })
+        if (m.shock) pushLog({ id: `${Date.now()}-j`, ts: Date.now(), source: 'MATH', level: 'warn', message: `Jerk Z=${m.jerkZ.toFixed(2)} > 3.0 — HEAVY VOLATILITY SHOCK DETECTED.` })
       }
     }
 
@@ -201,11 +201,11 @@ export function useKruppFeed() {
 
     const onConnect = () => {
       useKrupp.getState().setConnection('open')
-      pushLog({ id: `${Date.now()}-c`, ts: Date.now(), source: 'SYSTEM', level: 'info', message: '[SYSTEM] Gateway uplink established (Caddy edge → :3030 stream relay).' })
+      pushLog({ id: `${Date.now()}-c`, ts: Date.now(), source: 'SYSTEM', level: 'info', message: 'Gateway uplink established (Caddy edge → :3030 stream relay).' })
     }
     const onDisconnect = () => {
       useKrupp.getState().setConnection('closed')
-      pushLog({ id: `${Date.now()}-d`, ts: Date.now(), source: 'SYSTEM', level: 'warn', message: '[SYSTEM] Uplink lost — retrying with exponential backoff.' })
+      pushLog({ id: `${Date.now()}-d`, ts: Date.now(), source: 'SYSTEM', level: 'warn', message: 'Uplink lost — retrying with exponential backoff.' })
     }
     const onStatus = (st: LseStatus) => useKrupp.getState().setAuth(st)
     const onTick = (t: Tick) => {
@@ -298,7 +298,7 @@ export function useKruppFeed() {
         })
         if (!res.ok) throw new Error(String(res.status))
         const j = await res.json()
-        pushLog({ id: `${Date.now()}-a`, ts: Date.now(), source: 'AGENT', level: 'info', message: `[AGENT] Reason/Act cycle complete: ${String(j.line).slice(0, 140)}` })
+        pushLog({ id: `${Date.now()}-a`, ts: Date.now(), source: 'AGENT', level: 'info', message: `Reason/Act cycle complete: ${String(j.line).slice(0, 140)}` })
         if (j?.degraded) { agentDelay = Math.min(agentDelay * 2, 208_000) } else { agentDelay = 26_000 }
       } catch {
         const canned = [
@@ -308,7 +308,7 @@ export function useKruppFeed() {
           'GEX flip proximity — gamma hedging flows expected into the close.',
           'Entropy dispersion rising — shrinking clip sizes to 0.4x notional.',
         ]
-        pushLog({ id: `${Date.now()}-a`, ts: Date.now(), source: 'AGENT', level: 'info', message: `[AGENT] Reason/Act cycle complete: ${canned[Math.floor(Math.random() * canned.length)]}` })
+        pushLog({ id: `${Date.now()}-a`, ts: Date.now(), source: 'AGENT', level: 'info', message: `Reason/Act cycle complete: ${canned[Math.floor(Math.random() * canned.length)]}` })
         agentDelay = Math.min(agentDelay * 2, 208_000)
       }
       scheduleAgent(agentDelay)

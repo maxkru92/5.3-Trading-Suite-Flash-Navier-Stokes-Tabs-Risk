@@ -32,7 +32,12 @@ import Desk13Infra from './desks/Desk13Infra';
 
 export type TabDef = {
   label: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  icon: React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
   accent: string;
   bar: string;
   Comp: React.ComponentType;

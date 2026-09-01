@@ -132,14 +132,15 @@ export default function Shell() {
   }, [theme]);
 
   /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
-         F pin/unpin active desk · P layout presets · V colourline ·
+         F pin/unpin active desk · P layout presets (anywhere) · V colourline ·
          ? workspace map · ⌘K palette
-         (desks only — the LONDON EDGE tab routes plain keys + ? + ⌘K to its
-         own terminal: 1/2/3 symbols, C crash, R reset, T engage, ? HotkeyHelp,
-         ⌘K desk palette) ---- */
+         (the LONDON EDGE tab routes plain 1/2/3/C/R/T + ? + ⌘K to its own
+         terminal: 1/2/3 symbols, C crash, R reset, T engage, ? HotkeyHelp,
+         ⌘K desk palette — P and V stay workspace-global) ---- */
   const [helpOpen, setHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [presetsOpen, setPresetsOpen] = useState(false);
+  const presetsOpen = useKrupp((s) => s.presetsOpen);
+  const setPresetsOpen = useKrupp((s) => s.setPresetsOpen);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -165,9 +166,9 @@ export default function Shell() {
         toggleFav(activeTab);
         return;
       }
-      if (e.key.toLowerCase() === 'p' && activeTab !== 0) {
+      if (e.key.toLowerCase() === 'p') {
         e.preventDefault();
-        setPresetsOpen((o) => !o);
+        setPresetsOpen(!useKrupp.getState().presetsOpen);
         return;
       }
       if (activeTab === 0) return; // landing terminal owns plain keys + ?
@@ -188,7 +189,7 @@ export default function Shell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeTab, setActiveTab, toggleFav]);
+  }, [activeTab, setActiveTab, toggleFav, setPresetsOpen]);
 
   if (!mounted) {
     return (
@@ -351,7 +352,7 @@ export default function Shell() {
               </button>
             )}
             <button
-              onClick={() => setPresetsOpen((o) => !o)}
+              onClick={() => setPresetsOpen(!presetsOpen)}
               title="Layout presets (P) — save / load named workspace snapshots"
               aria-label="Open layout presets"
               className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"

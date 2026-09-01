@@ -14,7 +14,13 @@
  *
  * LAYOUT PRESETS: named workspace snapshots (active tab + sub-tabs +
  * selections + pins) stored under 'krupp-presets' — a SEPARATE key so the
- * layout factory reset never destroys saved presets.
+ * layout factory reset never destroys saved presets. On the very first boot
+ * (key absent) a demo 'MORNING BOOK' preset is seeded for discoverability —
+ * deleting it is respected forever (the key then exists, even as '{}').
+ *
+ * UI SLICE: `presetsOpen` lives in the store (not in the Shell) so ANY
+ * surface — the 13-desk ⌘K palette, the P hotkey on desks AND the LONDON
+ * EDGE landing palette — can open the same presets dialog.
  */
 import { create } from 'zustand';
 
@@ -33,6 +39,8 @@ export interface WorkspaceSnapshot {
 }
 
 export type PresetSaveResult = 'ok' | 'overwrite-ok' | 'overwrite-needed' | 'full' | 'invalid';
+export type PresetRenameResult = 'ok' | 'invalid' | 'exists';
+export type PresetDuplicateResult = 'ok' | 'full' | 'invalid';
 
 interface KruppState {
   /** bumped by the market engine every tick (5 Hz) */
@@ -44,6 +52,8 @@ interface KruppState {
   favs: number[];
   /** named workspace layout snapshots ('krupp-presets', survives factory reset) */
   presets: Record<string, WorkspaceSnapshot>;
+  /** shared UI slice — the presets dialog is reachable from every surface */
+  presetsOpen: boolean;
   setActiveTab(t: number): void;
   setSubTab(desk: number, i: number): void;
   select(key: string, sym: string): void;
@@ -60,6 +70,14 @@ interface KruppState {
   applyPreset(name: string): boolean;
   /** delete a named snapshot */
   deletePreset(name: string): void;
+  /** rename a snapshot (snapshot + savedAt preserved). 'invalid' — bad
+   *  source/target name · 'exists' — target name already in use */
+  renamePreset(from: string, to: string): PresetRenameResult;
+  /** duplicate a snapshot under "NAME COPY" / "NAME #n" (new savedAt).
+   *  'full' — store at 12 slots · 'invalid' — unknown source name */
+  duplicatePreset(name: string): PresetDuplicateResult;
+  /** open/close the layout-presets dialog (global UI slice) */
+  setPresetsOpen(v: boolean): void;
   /** wipe all persisted workspace state (pins / sub-tabs / selections) and
    *  return to the LONDON EDGE landing tab — layout factory reset.
    *  Preserved: saved layout presets (separate storage key). */
@@ -141,13 +159,39 @@ function persistPresets(presets: Record<string, WorkspaceSnapshot>) {
 const boot = loadWorkspace();
 const bootPresets = loadPresets();
 
+/** FIRST-BOOT SEED: if the presets key has NEVER existed, plant a demo
+ *  'MORNING BOOK' snapshot so the presets system is discoverable (pinned
+ *  OPTIONS & RISK + INDEX FUTURES quick rail). Deleting every preset writes
+ *  '{}' — the key then exists and no seed ever returns. */
+function seedPresetsOnFirstBoot(): Record<string, WorkspaceSnapshot> {
+  if (typeof window === 'undefined') return bootPresets;
+  try {
+    if (window.localStorage.getItem(PRESETS_KEY) !== null) return bootPresets;
+    const seeded: Record<string, WorkspaceSnapshot> = {
+      'MORNING BOOK': {
+        activeTab: 0,
+        subTabs: {},
+        selection: {},
+        favs: [2, 3],
+        savedAt: Date.now(),
+      },
+    };
+    window.localStorage.setItem(PRESETS_KEY, JSON.stringify(seeded));
+    return seeded;
+  } catch {
+    return bootPresets;
+  }
+}
+
 export const useKrupp = create<KruppState>()((set, get) => ({
   revision: 0,
   activeTab: boot.activeTab,
   subTabs: boot.subTabs,
   selection: boot.selection,
   favs: boot.favs,
-  presets: bootPresets,
+  presets: seedPresetsOnFirstBoot(),
+  presetsOpen: false,
+  setPresetsOpen: (v) => set({ presetsOpen: v }),
   setActiveTab: (t) => {
     set({ activeTab: t });
     persistWorkspace(get());
@@ -219,6 +263,43 @@ export const useKrupp = create<KruppState>()((set, get) => ({
     delete presets[key];
     set({ presets });
     persistPresets(presets);
+  },
+  renamePreset: (from, to) => {
+    const keyFrom = from.trim().slice(0, MAX_NAME);
+    const keyTo = to.trim().slice(0, MAX_NAME);
+    const presets = { ...get().presets };
+    if (!keyTo || !(keyFrom in presets)) return 'invalid';
+    if (keyTo === keyFrom) return 'ok';
+    if (keyTo in presets) return 'exists';
+    presets[keyTo] = presets[keyFrom];
+    delete presets[keyFrom];
+    set({ presets });
+    persistPresets(presets);
+    return 'ok';
+  },
+  duplicatePreset: (name) => {
+    const key = name.trim().slice(0, MAX_NAME);
+    const presets = { ...get().presets };
+    const snap = presets[key];
+    if (!snap) return 'invalid';
+    if (Object.keys(presets).length >= MAX_PRESETS) return 'full';
+    let dup = `${key} COPY`;
+    let n = 2;
+    while (dup in presets) {
+      const suffix = ` #${n}`;
+      dup = `${key.slice(0, MAX_NAME - suffix.length)}${suffix}`;
+      n += 1;
+    }
+    presets[dup.slice(0, MAX_NAME)] = {
+      ...snap,
+      subTabs: { ...snap.subTabs },
+      selection: { ...snap.selection },
+      favs: [...snap.favs],
+      savedAt: Date.now(),
+    };
+    set({ presets });
+    persistPresets(presets);
+    return 'ok';
   },
   resetWorkspace: () => {
     try {

@@ -276,7 +276,7 @@ export const useKrupp = create<KruppStore>((set) => ({
       set((s) => ({
         logs: [...s.logs.slice(-MAX_LOGS), {
           id: `pol-${Date.now()}`, ts: Date.now(), source: 'RISK', level: 'warn' as const,
-          message: `[RISK] Desk policy updated — LOCK chaos>${applied.lockChaos.toFixed(2)} · SCALE visc<${Math.round(applied.scaleVisc * 100)}% · KILL score>${applied.killScore.toFixed(0)}`,
+          message: `Desk policy updated — LOCK chaos>${applied.lockChaos.toFixed(2)} · SCALE visc<${Math.round(applied.scaleVisc * 100)}% · KILL score>${applied.killScore.toFixed(0)}`,
         }],
       }))
     }

@@ -77,7 +77,7 @@ export function markOpt(t: OptTicket): number | null {
 function ticketLog(t: OptTicket, verb: string, px: number, extra = '') {
   useKrupp.getState().pushLog({
     id: rid(), ts: Date.now(), source: 'ROUTING', level: 'info',
-    message: `[ROUTING] OPTIONS — ${verb} ${Math.abs(t.qty)}x ${t.expiry} ES ${t.optKind[0]}${t.strike.toFixed(0)} @ ${px.toFixed(2)} (IV ${(t.entryIV).toFixed(1)}%)${extra}`,
+    message: `OPTIONS — ${verb} ${Math.abs(t.qty)}x ${t.expiry} ES ${t.optKind[0]}${t.strike.toFixed(0)} @ ${px.toFixed(2)} (IV ${(t.entryIV).toFixed(1)}%)${extra}`,
   })
 }
 
@@ -130,7 +130,7 @@ export const optDesk = {
     })
     useKrupp.getState().pushLog({
       id: rid(), ts: Date.now(), source: 'ROUTING', level: 'info',
-      message: `[ROUTING] OPTIONS — CLOSED ${t.expiry} ES ${t.optKind[0]}${t.strike.toFixed(0)} @ ${mark.toFixed(2)} — P&L ${pnl >= 0 ? '+' : '−'}$${Math.abs(pnl).toFixed(0)}`,
+      message: `OPTIONS — CLOSED ${t.expiry} ES ${t.optKind[0]}${t.strike.toFixed(0)} @ ${mark.toFixed(2)} — P&L ${pnl >= 0 ? '+' : '−'}$${Math.abs(pnl).toFixed(0)}`,
     })
 
     // agent post-mortem on notable round-trips (throttled — only |pnl| >= $150)
@@ -155,7 +155,7 @@ export const optDesk = {
     if (open.length > 0) {
       useKrupp.getState().pushLog({
         id: rid(), ts: Date.now(), source: 'ROUTING', level: 'warn',
-        message: `[ROUTING] OPTIONS — BOOK FLATTENED (${open.length} context tickets closed at market).`,
+        message: `OPTIONS — BOOK FLATTENED (${open.length} context tickets closed at market).`,
       })
     }
   },

@@ -51,7 +51,7 @@ export function PolicyProfiles() {
     setName('')
     useKrupp.getState().pushLog({
       id: `pol-prof-${Date.now()}`, ts: Date.now(), source: 'RISK', level: 'info',
-      message: `[RISK] Policy profile saved — "${list[0]?.name}" (${profRowLabel(list[0]?.policy ?? current)}).`,
+      message: `Policy profile saved — "${list[0]?.name}" (${profRowLabel(list[0]?.policy ?? current)}).`,
     })
   }
 
@@ -66,7 +66,7 @@ export function PolicyProfiles() {
     useKrupp.getState().setActiveProfile(getActiveProfileName())
     useKrupp.getState().pushLog({
       id: `pol-prof-${Date.now()}`, ts: Date.now(), source: 'RISK', level: 'warn',
-      message: `[RISK] Policy profile deleted — "${p.name}".`,
+      message: `Policy profile deleted — "${p.name}".`,
     })
   }
 
@@ -85,7 +85,7 @@ export function PolicyProfiles() {
     setTimeout(() => URL.revokeObjectURL(url), 4000)
     useKrupp.getState().pushLog({
       id: `pol-exp-${Date.now()}`, ts: Date.now(), source: 'RISK', level: 'info',
-      message: `[RISK] Policy profiles exported — ${profiles.length} profile(s) → krupp-policy-profiles_${stamp}.json.`,
+      message: `Policy profiles exported — ${profiles.length} profile(s) → krupp-policy-profiles_${stamp}.json.`,
     })
   }
 

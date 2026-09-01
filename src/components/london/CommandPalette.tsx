@@ -7,7 +7,7 @@
 
 import { useEffect } from 'react'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
-import { AlertOctagon, Bell, BellRing, Crosshair, Eraser, FileDown, FileText, FolderDown, Keyboard, KeyRound, Play, Printer, Radio, RotateCcw, ShieldHalf, Skull, Sparkles, Square, Volume2, VolumeX } from 'lucide-react'
+import { AlertOctagon, Bell, BellRing, Bookmark, Crosshair, Eraser, FileDown, FileText, FolderDown, Keyboard, KeyRound, Palette, Play, Printer, Radio, RotateCcw, ShieldHalf, Skull, Sparkles, Square, Star, Volume2, VolumeX } from 'lucide-react'
 import { useKrupp } from '@/lib/london/store'
 import { useKruppApi } from '@/lib/london/context'
 import { ledger } from '@/lib/london/execution'
@@ -16,13 +16,20 @@ import { printRiskReport } from '@/components/london/PrintReport'
 import { POLICY_DEFAULTS } from '@/lib/london/policy'
 import { armAll, resetTrips } from '@/lib/london/alerts'
 import { K } from './shared'
-import { KT } from '@/lib/theme';
+import { KT, useTheme, THEMES } from '@/lib/theme';
+import { useKrupp as useWorkspace } from '@/lib/krupp/store';
+import { TABS, DESK_HOTKEY } from '@/components/krupp/tabs';
 
 export function CommandPalette() {
   const open = useKrupp((s) => s.paletteOpen)
   const setOpen = useKrupp((s) => s.setPaletteOpen)
   const api = useKruppApi()
   const soundOn = useKrupp((s) => s.soundOn)
+  // workspace surfaces (14-tab matrix + presets dialog are global state)
+  const activeTab = useWorkspace((s) => s.activeTab)
+  const favs = useWorkspace((s) => s.favs)
+  const themeId = useTheme((s) => s.theme)
+  const targetColourline = THEMES[themeId === 'mk2' ? 'hft' : 'mk2']
 
   // ⌘K / Ctrl+K, plus desk hotkeys
   useEffect(() => {
@@ -47,8 +54,8 @@ export function CommandPalette() {
         useKrupp.getState().pushLog({
           id: `leg-${Date.now()}`, ts: Date.now(), source: 'ROUTING', level: 'info',
           message: next
-            ? '[ROUTING] Execution desk ENGAGED — agent order flow armed, interceptor chain live.'
-            : '[ROUTING] Execution desk HALTED — no new tickets will be routed.',
+            ? 'Execution desk ENGAGED — agent order flow armed, interceptor chain live.'
+            : 'Execution desk HALTED — no new tickets will be routed.',
         })
       }
     }
@@ -100,6 +107,60 @@ export function CommandPalette() {
           ))}
         </CommandGroup>
         <CommandSeparator />
+        <CommandGroup heading="NAVIGATE — 14-TAB MATRIX">
+          {TABS.map((t, i) => {
+            const TIcon = t.icon
+            const active = i === activeTab
+            const pinned = favs.includes(i)
+            return (
+              <CommandItem
+                key={t.label}
+                value={`${t.deskNo ? `desk ${String(t.deskNo).padStart(2, '0')} ` : 'landing '}${t.label}`}
+                onSelect={run(() => useWorkspace.getState().setActiveTab(i))}
+                className={`font-mono text-[11px] ${active ? 'text-foreground' : ''}`}
+              >
+                <TIcon size={13} style={{ color: active ? K.cyan : K.dim }} />
+                {t.deskNo ? `Desk ${String(t.deskNo).padStart(2, '0')} — ${t.label}` : `${t.label} (landing)`}
+                {pinned && <Star size={9} fill="currentColor" className="text-amber-300 shrink-0" aria-hidden />}
+                <span className="ml-auto text-muted-foreground text-[9px]">
+                  {active ? 'ACTIVE' : `key ${DESK_HOTKEY[i]}`}
+                </span>
+              </CommandItem>
+            )
+          })}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="WORKSPACE">
+          <CommandItem
+            onSelect={run(() => {
+              useTheme.getState().toggleTheme()
+              useKrupp.getState().pushLog({
+                id: `cl-${Date.now()}`, ts: Date.now(), source: 'SYSTEM', level: 'info',
+                message: `Colourline cut-over → ${THEMES[useTheme.getState().theme].name} — full palette swap across all 14 tabs.`,
+              })
+            })}
+            className="font-mono text-[11px]"
+          >
+            <Palette size={13} style={{ color: K.violet }} />
+            Colourline → {targetColourline.name}
+            <span className="ml-auto text-muted-foreground text-[9px]">hotkey V</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={run(() => {
+              useWorkspace.getState().setPresetsOpen(true)
+              useKrupp.getState().pushLog({
+                id: `ws-${Date.now()}`, ts: Date.now(), source: 'SYSTEM', level: 'info',
+                message: 'Layout presets opened — named workspace snapshots.',
+              })
+            })}
+            className="font-mono text-[11px]"
+          >
+            <Bookmark size={13} style={{ color: KT('accent') }} />
+            Layout presets — save / load snapshots
+            <span className="ml-auto text-muted-foreground text-[9px]">hotkey P</span>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
         <CommandGroup heading="EXECUTION DESK">
           <CommandItem
             onSelect={run(() => {
@@ -108,8 +169,8 @@ export function CommandPalette() {
               useKrupp.getState().pushLog({
                 id: `leg-${Date.now()}`, ts: Date.now(), source: 'ROUTING', level: 'info',
                 message: next
-                  ? '[ROUTING] Execution desk ENGAGED — agent order flow armed, interceptor chain live.'
-                  : '[ROUTING] Execution desk HALTED — no new tickets will be routed.',
+                  ? 'Execution desk ENGAGED — agent order flow armed, interceptor chain live.'
+                  : 'Execution desk HALTED — no new tickets will be routed.',
               })
             })}
             className="font-mono text-[11px]"

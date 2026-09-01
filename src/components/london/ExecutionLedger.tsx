@@ -79,7 +79,7 @@ export function ExecutionLedger() {
       a.remove()
       useKrupp.getState().pushLog({
         id: `csv-${Date.now()}`, ts: Date.now(), source: 'LEDGER', level: 'info',
-        message: '[LEDGER] Full blotter exported to CSV (auditor stream).',
+        message: 'Full blotter exported to CSV (auditor stream).',
       })
     } finally {
       setTimeout(() => setExporting(false), 1200)
@@ -94,7 +94,7 @@ export function ExecutionLedger() {
       .then((f) => st.setDrill(i, f))
       .catch(() => {
         st.setDrill(null)
-        st.pushLog({ id: `drill-${Date.now()}`, ts: Date.now(), source: 'SYSTEM', level: 'warn', message: '[SYSTEM] Session drill-down unavailable — ledger query failed.' })
+        st.pushLog({ id: `drill-${Date.now()}`, ts: Date.now(), source: 'SYSTEM', level: 'warn', message: 'Session drill-down unavailable — ledger query failed.' })
       })
   }
 

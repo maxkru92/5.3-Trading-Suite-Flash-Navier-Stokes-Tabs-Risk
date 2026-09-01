@@ -23,6 +23,8 @@ const HOTKEYS: Array<{ keys: string[]; action: string; tone: string }> = [
   { keys: ['1'], action: 'Track ES ladder (E-mini S&P 500)', tone: K.text },
   { keys: ['2'], action: 'Track NQ ladder (E-mini Nasdaq 100)', tone: K.text },
   { keys: ['3'], action: 'Track SPY ladder (SPDR S&P 500 ETF)', tone: K.text },
+  { keys: ['P'], action: 'Layout presets — workspace snapshots (global, every tab)', tone: K.violet },
+  { keys: ['V'], action: 'Cut over the colourline — MK-II NAVY ↔ HFT MATRIX (global)', tone: K.violet },
 ]
 
 const CONTROLS: Array<{ area: string; lines: string[] }> = [
@@ -41,6 +43,11 @@ const CONTROLS: Array<{ area: string; lines: string[] }> = [
     'PERSISTED VOL STRIP — hover for a per-snapshot crosshair readout (time, VIX, contango, score, regime, source).',
     'IV surface — click any strike row to open an options context ticket; tickets mark to the live surface and settle on click.',
     'Option tickets book straight into OPT P&L with agent post-mortem notes on |P&L| ≥ $150.',
+  ] },
+  { area: 'WORKSPACE (GLOBAL, EVERY TAB)', lines: [
+    'The 14-tab matrix — press L to return here, 1-9/0/Q/W/E to jump desks; ★ pins + P presets + V colourline work from anywhere, including this landing.',
+    '⌘K palette now carries NAVIGATE (all 14 tabs) and WORKSPACE (colourline cut-over, layout presets) alongside the desk verbs.',
+    'Layout presets capture the whole workspace (tab, sub-tabs, selections, pins) — rename/duplicate rows in the presets dialog; a demo MORNING BOOK preset is planted on first boot.',
   ] },
   { area: 'EXECUTION & AUDIT (BOTTOM ROW)', lines: [
     'DESK ENGAGED toggles the agent reason/act loop; FLATTEN market-outs the open position.',

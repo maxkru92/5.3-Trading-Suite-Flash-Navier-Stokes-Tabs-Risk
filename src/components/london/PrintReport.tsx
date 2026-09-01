@@ -31,7 +31,7 @@ function hhmmss(ts: number | string): string {
 export function printRiskReport(): void {
   useKrupp.getState().pushLog({
     id: `prn-${Date.now()}`, ts: Date.now(), source: 'SYSTEM', level: 'info',
-    message: '[SYSTEM] Print pipeline engaged — A4 risk report composed for browser PDF export.',
+    message: 'Print pipeline engaged — A4 risk report composed for browser PDF export.',
   })
   // let the log line land before the dialog blocks the event loop
   setTimeout(() => window.print(), 80)

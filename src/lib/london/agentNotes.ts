@@ -30,14 +30,14 @@ export function requestTradeNote(context: string, fallback: string) {
       useKrupp.getState().setLastAgentNote(line)
       useKrupp.getState().pushLog({
         id: rid(), ts: Date.now(), source: 'AGENT', level: 'info',
-        message: `[AGENT] Trade note: ${line}`,
+        message: `Trade note: ${line}`,
       })
     })
     .catch(() => {
       useKrupp.getState().setLastAgentNote(fallback)
       useKrupp.getState().pushLog({
         id: rid(), ts: Date.now(), source: 'AGENT', level: 'info',
-        message: `[AGENT] Trade note: ${fallback}`,
+        message: `Trade note: ${fallback}`,
       })
     })
 }

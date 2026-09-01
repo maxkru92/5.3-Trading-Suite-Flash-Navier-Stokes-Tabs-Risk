@@ -245,6 +245,6 @@ export async function downloadRiskReport(): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(url), 4000)
   useKrupp.getState().pushLog({
     id: `rpt-${Date.now()}`, ts: Date.now(), source: 'SYSTEM', level: 'info',
-    message: `[SYSTEM] Risk report exported — ${(blob.size / 1024).toFixed(1)}KB markdown snapshot downloaded to desk.`,
+    message: `Risk report exported — ${(blob.size / 1024).toFixed(1)}KB markdown snapshot downloaded to desk.`,
   })
 }

@@ -2,15 +2,16 @@
 /**
  * KRUPP CAPITAL // LAYOUT PRESETS — NAMED WORKSPACE SNAPSHOTS
  *
- * Save / load / delete named snapshots of the workspace layout (active tab,
- * per-desk sub-tabs, instrument selections, pinned desks). Snapshots live in
- * 'krupp-presets' — a separate storage key the layout factory reset never
- * touches. Opened via the ⌘K workspace palette (WORKSPACE group), the P
- * hotkey on any of the 13 desks, or the compact rail trigger.
+ * Save / load / rename / duplicate / delete named snapshots of the workspace
+ * layout (active tab, per-desk sub-tabs, instrument selections, pinned desks).
+ * Snapshots live in 'krupp-presets' — a separate storage key the layout
+ * factory reset never touches. Opened via the ⌘K workspace palette, the P
+ * hotkey (desks AND the LONDON EDGE landing), the compact rail trigger, or
+ * the landing terminal's own command palette (WORKSPACE group).
  */
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Bookmark, Check, RotateCcw, Save, Star, TriangleAlert } from 'lucide-react';
+import { Bookmark, Check, Copy, Pencil, RotateCcw, Save, Star, TriangleAlert, X } from 'lucide-react';
 import { useKrupp, type PresetSaveResult } from '@/lib/krupp/store';
 import { KT } from '@/lib/theme';
 import { TABS } from './tabs';
@@ -39,6 +40,9 @@ export function WorkspacePresets({ open, onOpenChange }: { open: boolean; onOpen
   const [name, setName] = useState('');
   const [status, setStatus] = useState<PresetSaveResult | null>(null);
   const [armedDelete, setArmedDelete] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState('');
+  const [rowMsg, setRowMsg] = useState<{ msg: string; warn: boolean } | null>(null);
 
   const entries = Object.entries(presets).sort(([, a], [, b]) => b.savedAt - a.savedAt);
   const activeName = TABS[activeTab]?.label ?? `TAB ${activeTab}`;
@@ -53,8 +57,37 @@ export function WorkspacePresets({ open, onOpenChange }: { open: boolean; onOpen
   const handleClose = (v: boolean) => {
     setStatus(null);
     setArmedDelete(null);
+    setRenaming(null);
+    setRowMsg(null);
     if (!v) setName('');
     onOpenChange(v);
+  };
+
+  const commitRename = () => {
+    if (!renaming) return;
+    const res = useKrupp.getState().renamePreset(renaming, renameVal);
+    if (res === 'ok') {
+      setRowMsg({ msg: `RENAMED → ${renameVal.trim().toUpperCase()}`, warn: false });
+      setRenaming(null);
+    } else if (res === 'exists') {
+      setRowMsg({ msg: 'NAME ALREADY IN USE', warn: true });
+    } else {
+      setRowMsg({ msg: 'NAME REQUIRED (MAX 24 CHARS)', warn: true });
+    }
+  };
+
+  const doDuplicate = (pname: string) => {
+    const res = useKrupp.getState().duplicatePreset(pname);
+    if (res === 'ok') {
+      const dupName = Object.keys(useKrupp.getState().presets).find(
+        (k) => k !== pname && (k === `${pname} COPY` || k.startsWith(`${pname.slice(0, 20)} #`)),
+      );
+      setRowMsg({ msg: `DUPLICATED → ${dupName ?? pname + ' COPY'}`, warn: false });
+    } else if (res === 'full') {
+      setRowMsg({ msg: 'PRESET STORE FULL (12 SLOTS) — DELETE ONE FIRST', warn: true });
+    } else {
+      setRowMsg({ msg: 'SNAPSHOT NOT FOUND', warn: true });
+    }
   };
 
   return (
@@ -62,6 +95,10 @@ export function WorkspacePresets({ open, onOpenChange }: { open: boolean; onOpen
       <DialogContent
         className="bg-kheader border-kborder2 max-h-[85vh] overflow-y-auto krupp-scroll sm:max-w-lg"
         aria-describedby={undefined}
+        /* P is a true TOGGLE: keep focus on <body> when the dialog opens so a
+         * second P reaches the Shell hotkey handler instead of being swallowed
+         * by the name-input guard (matches the ⌘K palette toggle symmetry) */
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="text-left">
           <DialogTitle className="font-mono text-[12px] tracking-[0.22em] text-secondary-foreground flex items-center gap-2">
@@ -130,17 +167,38 @@ export function WorkspacePresets({ open, onOpenChange }: { open: boolean; onOpen
               {entries.map(([pname, snap]) => {
                 const tabLabel = TABS[snap.activeTab]?.label ?? `TAB ${snap.activeTab}`;
                 const deleting = armedDelete === pname;
+                const editing = renaming === pname;
                 return (
                   <div
                     key={pname}
                     className={`flex items-center gap-2 rounded-sm border px-2 py-1.5 transition-colors ${
-                      deleting ? 'border-rose-500/70 bg-rose-950/30' : 'border-kinset bg-kpanel/60 hover:border-kborder4'
+                      deleting
+                        ? 'border-rose-500/70 bg-rose-950/30'
+                        : editing
+                          ? 'border-kaccent/60 bg-kaccent/5'
+                          : 'border-kinset bg-kpanel/60 hover:border-kborder4'
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-mono text-[10.5px] font-bold tracking-[0.06em] text-foreground" title={pname}>
-                        {pname}
-                      </div>
+                      {editing ? (
+                        <input
+                          value={renameVal}
+                          autoFocus
+                          onChange={(e) => setRenameVal(e.target.value.slice(0, MAX_NAME))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitRename();
+                            if (e.key === 'Escape') setRenaming(null);
+                          }}
+                          maxLength={MAX_NAME}
+                          spellCheck={false}
+                          aria-label={`Rename preset ${pname}`}
+                          className="h-6 w-full min-w-0 rounded-sm border border-kaccent/50 bg-input/60 px-1.5 font-mono text-[10.5px] font-bold text-foreground outline-none focus:border-kaccent"
+                        />
+                      ) : (
+                        <div className="truncate font-mono text-[10.5px] font-bold tracking-[0.06em] text-foreground" title={pname}>
+                          {pname}
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 font-mono text-[8.5px] tracking-[0.08em] text-muted-foreground">
                         <span className="truncate">{tabLabel}</span>
                         {snap.favs.length > 0 && (
@@ -152,43 +210,93 @@ export function WorkspacePresets({ open, onOpenChange }: { open: boolean; onOpen
                         <span className="shrink-0">· {timeAgo(snap.savedAt)}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        if (useKrupp.getState().applyPreset(pname)) handleClose(false);
-                      }}
-                      title={`Restore "${pname}" — jumps to ${tabLabel}`}
-                      className="flex shrink-0 items-center gap-1 rounded border border-kaccent/40 bg-kaccent/10 px-2 py-1 font-mono text-[9px] font-bold tracking-[0.14em] transition-colors hover:border-kaccent/80"
-                      style={{ color: KT('accent') }}
-                    >
-                      LOAD
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (!deleting) { setArmedDelete(pname); return; }
-                        useKrupp.getState().deletePreset(pname);
-                        setArmedDelete(null);
-                      }}
-                      onBlur={() => setArmedDelete((d) => (d === pname ? null : d))}
-                      aria-label={deleting ? `Confirm delete preset ${pname}` : `Delete preset ${pname}`}
-                      title={deleting ? 'CONFIRM DELETE' : 'Delete snapshot'}
-                      className={`flex shrink-0 items-center gap-1 rounded border px-1.5 py-1 font-mono text-[9px] font-bold tracking-[0.14em] transition-colors ${
-                        deleting
-                          ? 'border-rose-500/80 bg-rose-950/50 text-rose-300'
-                          : 'border-transparent text-muted-foreground hover:border-rose-500/40 hover:text-rose-300'
-                      }`}
-                    >
-                      {deleting ? <TriangleAlert size={10} aria-hidden /> : <RotateCcw size={10} className="rotate-180" aria-hidden />}
-                      {deleting ? 'SURE?' : 'DEL'}
-                    </button>
+                    {editing ? (
+                      <>
+                        <button
+                          onClick={commitRename}
+                          aria-label="Commit rename"
+                          title="Commit rename (Enter)"
+                          className="flex shrink-0 items-center rounded border border-kaccent/50 bg-kaccent/10 p-1 transition-colors hover:border-kaccent"
+                          style={{ color: KT('accent') }}
+                        >
+                          <Check size={11} aria-hidden />
+                        </button>
+                        <button
+                          onClick={() => setRenaming(null)}
+                          aria-label="Cancel rename"
+                          title="Cancel (Esc)"
+                          className="flex shrink-0 items-center rounded border border-transparent p-1 text-muted-foreground transition-colors hover:border-rose-500/40 hover:text-rose-300"
+                        >
+                          <X size={11} aria-hidden />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => { setRenaming(pname); setRenameVal(pname); setRowMsg(null); }}
+                          aria-label={`Rename preset ${pname}`}
+                          title="Rename snapshot"
+                          className="flex shrink-0 items-center rounded border border-transparent p-1 text-muted-foreground transition-colors hover:border-kaccent/50 hover:text-foreground"
+                        >
+                          <Pencil size={10} aria-hidden />
+                        </button>
+                        <button
+                          onClick={() => doDuplicate(pname)}
+                          aria-label={`Duplicate preset ${pname}`}
+                          title="Duplicate snapshot"
+                          className="flex shrink-0 items-center rounded border border-transparent p-1 text-muted-foreground transition-colors hover:border-kaccent/50 hover:text-foreground"
+                        >
+                          <Copy size={10} aria-hidden />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (useKrupp.getState().applyPreset(pname)) handleClose(false);
+                          }}
+                          title={`Restore "${pname}" — jumps to ${tabLabel}`}
+                          className="flex shrink-0 items-center gap-1 rounded border border-kaccent/40 bg-kaccent/10 px-2 py-1 font-mono text-[9px] font-bold tracking-[0.14em] transition-colors hover:border-kaccent/80"
+                          style={{ color: KT('accent') }}
+                        >
+                          LOAD
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!deleting) { setArmedDelete(pname); return; }
+                            useKrupp.getState().deletePreset(pname);
+                            setArmedDelete(null);
+                          }}
+                          onBlur={() => setArmedDelete((d) => (d === pname ? null : d))}
+                          aria-label={deleting ? `Confirm delete preset ${pname}` : `Delete preset ${pname}`}
+                          title={deleting ? 'CONFIRM DELETE' : 'Delete snapshot'}
+                          className={`flex shrink-0 items-center gap-1 rounded border px-1.5 py-1 font-mono text-[9px] font-bold tracking-[0.14em] transition-colors ${
+                            deleting
+                              ? 'border-rose-500/80 bg-rose-950/50 text-rose-300'
+                              : 'border-transparent text-muted-foreground hover:border-rose-500/40 hover:text-rose-300'
+                          }`}
+                        >
+                          {deleting ? <TriangleAlert size={10} aria-hidden /> : <RotateCcw size={10} className="rotate-180" aria-hidden />}
+                          {deleting ? 'SURE?' : 'DEL'}
+                        </button>
+                      </>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
+          {rowMsg && (
+            <div
+              role="status"
+              className={`mt-1.5 flex items-center gap-1 font-mono text-[9px] font-bold tracking-[0.14em] ${rowMsg.warn ? 'text-amber-400' : ''}`}
+              style={rowMsg.warn ? undefined : { color: KT('accent') }}
+            >
+              {rowMsg.warn ? <TriangleAlert size={10} aria-hidden /> : <Check size={10} aria-hidden />}
+              {rowMsg.msg}
+            </div>
+          )}
         </div>
 
         <div className="text-[7.5px] tracking-[0.14em] text-muted-foreground font-mono">
-          KRUPP CAPITAL // LAYOUT PRESETS · STORED LOCALLY ('krupp-presets') · P HOTKEY ON THE 13 DESKS
+          KRUPP CAPITAL // LAYOUT PRESETS · STORED LOCALLY ('krupp-presets') · P HOTKEY ANYWHERE · ⌘K WORKSPACE GROUP
         </div>
       </DialogContent>
     </Dialog>

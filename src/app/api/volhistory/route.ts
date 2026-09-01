@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 //        (client cadence 60s; server enforces a 45s floor so multi-tab desks
 //        cannot flood the table).
 // GET  — ?limit=N ascending series for the persisted strip + report export.
+//        ?format=csv streams the series as text/csv (audit export).
 
 const MIN_INTERVAL_MS = 45_000
 
@@ -72,6 +73,26 @@ export async function GET(req: NextRequest) {
         spot: r.spot, score: r.score, regime: r.regime, source: r.source,
       }))
       .reverse() // ascending — canvas strips draw left→right in time order
+
+    /* CSV audit export — same shape as the ledger exporter (RFC-4180 quoting) */
+    if (req.nextUrl.searchParams.get('format') === 'csv') {
+      const q = (v: unknown): string => {
+        const s = String(v ?? '')
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+      }
+      const head = 'timestamp_utc,vix,contango,multiplier,pc_ratio,atm_iv,flip_strike,total_gex,spot,score,regime,source'
+      const body = series
+        .map((r) => [new Date(r.ts).toISOString(), r.vix, r.contango, r.multiplier, r.pcRatio, r.atmIV, r.flipStrike, r.totalGex, r.spot, r.score, r.regime, r.source].map(q).join(','))
+        .join('\n')
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      return new NextResponse(`${head}\n${body}\n`, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="krupp-volhistory-${stamp}.csv"`,
+        },
+      })
+    }
+
     return NextResponse.json({ ok: true, count: series.length, series })
   } catch (e) {
     console.error('[volhistory] read failed:', e)

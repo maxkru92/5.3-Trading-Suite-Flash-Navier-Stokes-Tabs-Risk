@@ -6,8 +6,8 @@
 // contango % · Put/Call volume-to-OI contrarian gauges.
 // ============================================================================
 
-import { useEffect, useRef } from 'react'
-import { Database, TrendingDown, TrendingUp } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Database, FileDown, TrendingDown, TrendingUp } from 'lucide-react'
 import { cboeHistory } from '@/lib/london/cboeHistory'
 import { useKrupp } from '@/lib/london/store'
 import { K, Panel, Spark, fmt } from './shared'
@@ -287,6 +287,26 @@ export function CboePanel() {
   const contango = c?.contangoPct ?? 0
   const vix = c?.vix ?? 0
 
+  // --- vol-history CSV export — streams the persisted VolSnapshot series ---
+  const [csvBusy, setCsvBusy] = useState(false)
+  const exportCsv = () => {
+    setCsvBusy(true)
+    try {
+      const a = document.createElement('a')
+      a.href = '/api/volhistory?format=csv&limit=720'
+      a.download = ''
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      useKrupp.getState().pushLog({
+        id: `vcsv-${Date.now()}`, ts: Date.now(), source: 'CBOE', level: 'info',
+        message: '[CBOE] Volatility snapshot series exported to CSV (audit stream).',
+      })
+    } finally {
+      setTimeout(() => setCsvBusy(false), 1200)
+    }
+  }
+
   const chips: Array<{ label: string; v: string; c: string; note?: string }> = c
     ? [
         { label: 'VIX', v: c.vix.toFixed(2), c: vix > 25 ? K.red : vix > 18 ? K.orange : K.green },
@@ -302,7 +322,20 @@ export function CboePanel() {
       title="CBOE VOLATILITY & SENTIMENT"
       sub={c ? `${c.source} · TERM ${c.termLabel}` : 'COLLECTING…'}
       accent="orange"
-      right={c ? (contango >= 0 ? <TrendingUp size={12} style={{ color: K.green }} aria-hidden /> : <TrendingDown size={12} style={{ color: K.red }} aria-hidden />) : undefined}
+      right={c ? (
+        <span className="flex items-center gap-1.5">
+          <button
+            onClick={exportCsv}
+            disabled={csvBusy}
+            title="Download the persisted volatility snapshot series as CSV"
+            className="flex items-center gap-0.5 rounded-sm border px-1 py-px font-mono text-[8px] font-bold tracking-[0.14em] transition-colors disabled:opacity-50"
+            style={{ color: KT('cyan'), borderColor: hexA(KT('cyan'), 0.45), background: hexA(KT('cyan'), 0.08) }}
+          >
+            <FileDown size={9} aria-hidden /> {csvBusy ? '…' : 'CSV'}
+          </button>
+          {contango >= 0 ? <TrendingUp size={12} style={{ color: K.green }} aria-hidden /> : <TrendingDown size={12} style={{ color: K.red }} aria-hidden />}
+        </span>
+      ) : undefined}
       bodyClass="p-2 flex flex-col gap-2"
     >
       <div className="grid grid-cols-5 gap-1">

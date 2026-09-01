@@ -28,6 +28,9 @@ interface KruppState {
   setSubTab(desk: number, i: number): void;
   select(key: string, sym: string): void;
   toggleFav(t: number): void;
+  /** wipe all persisted workspace state (pins / sub-tabs / selections) and
+   *  return to the LONDON EDGE landing tab — layout factory reset */
+  resetWorkspace(): void;
   bump(): void;
 }
 
@@ -88,6 +91,14 @@ export const useKrupp = create<KruppState>()((set, get) => ({
       favs: s.favs.includes(t) ? s.favs.filter((f) => f !== t) : [...s.favs, t],
     }));
     persistWorkspace(get());
+  },
+  resetWorkspace: () => {
+    try {
+      window.localStorage.removeItem(WS_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+    set({ activeTab: 0, subTabs: {}, selection: {}, favs: [] });
   },
   bump: () => set((s) => ({ revision: s.revision + 1 })),
 }));

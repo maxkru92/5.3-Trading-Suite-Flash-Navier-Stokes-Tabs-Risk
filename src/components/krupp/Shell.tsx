@@ -25,6 +25,7 @@ import { fClock, fCountdown, fN, fPx, fPct } from '@/lib/krupp/format';
 import { hydrateTheme, useTheme, THEMES } from '@/lib/theme';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { CrisisOverlay } from './CrisisOverlay';
+import { WorkspaceHelp } from './WorkspaceHelp';
 import LondonEdge from '@/components/london/LondonEdge';
 import Desk01Volatility from './desks/Desk01Volatility';
 import Desk02Options from './desks/Desk02Options';
@@ -175,9 +176,10 @@ export default function Shell() {
   }, [theme]);
 
   /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
-         F pin/unpin active desk · V colourline. Plain keys are skipped on the
-         LONDON EDGE tab — the landing terminal owns its own single-key routing
-         (1/2/3 symbols, C crash, R reset, T engage) ---- */
+         F pin/unpin active desk · V colourline · ? workspace map (desks only —
+         the LONDON EDGE tab routes plain keys + ? to its own terminal: 1/2/3
+         symbols, C crash, R reset, T engage, ? HotkeyHelp) ---- */
+  const [helpOpen, setHelpOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -194,7 +196,12 @@ export default function Shell() {
         toggleFav(activeTab);
         return;
       }
-      if (activeTab === 0) return; // landing terminal owns plain keys
+      if (activeTab === 0) return; // landing terminal owns plain keys + ?
+      if (e.key === '?') {
+        e.preventDefault();
+        setHelpOpen((o) => !o);
+        return;
+      }
       const map: Record<string, number> = {
         l: 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
         '6': 6, '7': 7, '8': 8, '9': 9, '0': 10, q: 11, w: 12, e: 13,
@@ -246,6 +253,7 @@ export default function Shell() {
         className="flex min-h-screen flex-col bg-kbg text-zinc-200 print:bg-white"
       >
       <CrisisOverlay />
+      <WorkspaceHelp open={helpOpen} onOpenChange={setHelpOpen} />
 
       {/* ------------- header (hidden on print while the LONDON EDGE A4 report owns the paper) ------------- */}
       <header className={`sticky top-0 z-40 border-b border-kborder bg-kheader/95 backdrop-blur ${tab.deskNo === undefined ? 'print:hidden' : ''}`}>
@@ -415,7 +423,37 @@ export default function Shell() {
               <kbd className="kbd-hint">Q</kbd><kbd className="kbd-hint">W</kbd><kbd className="kbd-hint">E</kbd> DESK 11-13
               <kbd className="kbd-hint">F</kbd> PIN
               <kbd className="kbd-hint">V</kbd> COLOURLINE
+              {activeTab !== 0 && (
+                <button
+                  onClick={() => setHelpOpen(true)}
+                  title="Workspace hotkey map & layout reset"
+                  className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+                >
+                  <kbd className="kbd-hint">?</kbd> HELP
+                </button>
+              )}
             </span>
+            {/* pinned-desk quick rail — click to jump */}
+            {favs.length > 0 && (
+              <span className="hidden items-center gap-1 xl:flex" aria-label="Pinned desks">
+                <span className="h-2.5 w-px bg-kborder2" aria-hidden />
+                <Star size={8} className="text-amber-300" aria-hidden />
+                {favs.map((i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveTab(i)}
+                    title={`Jump to desk ${String(i).padStart(2, '0')} — ${TABS[i]?.label ?? ''}`}
+                    className={`rounded-sm border px-1 font-mono text-[8.5px] font-bold tracking-wider outline-none transition-colors focus-visible:ring-1 focus-visible:ring-kaccent/70 ${
+                      i === activeTab
+                        ? 'border-amber-400/80 bg-amber-400/15 text-amber-200'
+                        : 'border-amber-400/25 bg-amber-400/5 text-amber-300/70 hover:border-amber-400/60 hover:text-amber-200'
+                    }`}
+                  >
+                    {String(i).padStart(2, '0')}
+                  </button>
+                ))}
+              </span>
+            )}
           </span>
           <span className="hidden sm:inline">
             ENGINE {fN(tps, 0)} tps · REV {useKrupp.getState().revision} · COLOURLINE {THEMES[useTheme.getState().theme].name}

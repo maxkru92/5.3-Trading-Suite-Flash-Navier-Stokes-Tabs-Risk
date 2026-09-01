@@ -188,6 +188,16 @@ export function CommandPalette() {
           })} className="font-mono text-[11px]">
             <FileDown size={13} style={{ color: K.violet }} /> Export execution ledger <span className="ml-auto text-muted-foreground text-[9px]">CSV · full SQLite blotter</span>
           </CommandItem>
+          <CommandItem onSelect={run(() => {
+            const a = document.createElement('a')
+            a.href = '/api/volhistory?format=csv&limit=720'
+            a.download = ''
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+          })} className="font-mono text-[11px]">
+            <FileDown size={13} style={{ color: K.orange }} /> Export vol snapshot series <span className="ml-auto text-muted-foreground text-[9px]">CSV · CBOE + risk strip</span>
+          </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="VIEW">

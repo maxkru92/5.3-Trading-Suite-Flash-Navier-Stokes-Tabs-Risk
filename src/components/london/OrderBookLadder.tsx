@@ -100,9 +100,23 @@ export function OrderBookLadder() {
   const cdelta = feed.cdelta.get(selected) ?? 0
   const microHist = feed.micro.get(selected)
 
+  // Aggregate duplicate price levels (L2 snapshot merges can repeat a level)
+  // so the ladder shows one row per price with the summed queue size — this
+  // also guarantees unique React keys (`a${price}` / `b${price}`).
   const [bids, asks, max] = useMemo(() => {
-    const b = book?.bids.slice(0, LEVELS_SHOWN) ?? []
-    const a = book?.asks.slice(0, LEVELS_SHOWN) ?? []
+    const agg = (levels: BookLevel[], asc: boolean): BookLevel[] => {
+      const byPx = new Map<number, BookLevel>()
+      for (const l of levels) {
+        const hit = byPx.get(l.price)
+        byPx.set(l.price, hit ? { price: l.price, size: hit.size + l.size } : { ...l })
+      }
+      const rows = Array.from(byPx.values())
+      rows.sort((x, y) => (asc ? x.price - y.price : y.price - x.price))
+      return rows
+    }
+    // preserve feed ordering semantics: bids best(highest) first, asks best(lowest) first
+    const b = agg(book?.bids ?? [], false).slice(0, LEVELS_SHOWN)
+    const a = agg(book?.asks ?? [], true).slice(0, LEVELS_SHOWN)
     const m = Math.max(1, ...b.map((l) => l.size), ...a.map((l) => l.size))
     return [b, a, m]
   }, [book, bookRev])

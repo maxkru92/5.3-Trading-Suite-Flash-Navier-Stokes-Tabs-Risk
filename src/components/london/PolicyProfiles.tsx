@@ -107,7 +107,7 @@ export function PolicyProfiles() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="bg-kheader border-gridline max-w-md krupp-scroll" aria-describedby={undefined}>
+      <DialogContent className="bg-kheader border-gridline krupp-scroll sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader className="text-left">
           <DialogTitle className="font-mono text-[12px] tracking-[0.22em] text-secondary-foreground flex items-center gap-2">
             <FolderDown size={13} style={{ color: K.cyan }} aria-hidden />

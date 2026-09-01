@@ -13,7 +13,7 @@
  * against the new palette; module-scope engines keep running uninterrupted.
  */
 import { useEffect, useRef, useState } from 'react';
-import { TriangleAlert, ShieldCheck, Star } from 'lucide-react';
+import { Bookmark, SquareTerminal, TriangleAlert, ShieldCheck, Star } from 'lucide-react';
 import { bootstrapKrupp, ms, startCrisis, endCrisis } from '@/lib/krupp/engine';
 import { infra } from '@/lib/krupp/infraservice';
 import { useKrupp, useRevision } from '@/lib/krupp/store';
@@ -23,6 +23,7 @@ import { ThemeSwitcher } from './ThemeSwitcher';
 import { CrisisOverlay } from './CrisisOverlay';
 import { WorkspaceHelp } from './WorkspaceHelp';
 import { WorkspacePalette } from './WorkspacePalette';
+import { WorkspacePresets } from './WorkspacePresets';
 import { TABS } from './tabs';
 
 function UtcClock(): React.ReactElement {
@@ -131,12 +132,14 @@ export default function Shell() {
   }, [theme]);
 
   /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
-         F pin/unpin active desk · V colourline · ? workspace map · ⌘K palette
+         F pin/unpin active desk · P layout presets · V colourline ·
+         ? workspace map · ⌘K palette
          (desks only — the LONDON EDGE tab routes plain keys + ? + ⌘K to its
          own terminal: 1/2/3 symbols, C crash, R reset, T engage, ? HotkeyHelp,
          ⌘K desk palette) ---- */
   const [helpOpen, setHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -160,6 +163,11 @@ export default function Shell() {
       if (e.key.toLowerCase() === 'f' && activeTab !== 0) {
         e.preventDefault();
         toggleFav(activeTab);
+        return;
+      }
+      if (e.key.toLowerCase() === 'p' && activeTab !== 0) {
+        e.preventDefault();
+        setPresetsOpen((o) => !o);
         return;
       }
       if (activeTab === 0) return; // landing terminal owns plain keys + ?
@@ -220,11 +228,13 @@ export default function Shell() {
       >
       <CrisisOverlay />
       <WorkspaceHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      <WorkspacePresets open={presetsOpen} onOpenChange={setPresetsOpen} />
       {tab.deskNo !== undefined && (
         <WorkspacePalette
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
           onRequestHelp={() => setHelpOpen(true)}
+          onRequestPresets={() => setPresetsOpen(true)}
         />
       )}
 
@@ -327,7 +337,28 @@ export default function Shell() {
           <TickerChip sym="NQ1!" label="NQ" />
           <TickerChip sym="VIX" label="VIX" />
           <TickerChip sym="BTC-USD" label="BTC" />
-          <span className="ml-auto hidden sm:inline">ENGINE TICK #{fN(ms.tickCount, 0)}</span>
+          {/* right side — engine tick + compact workspace triggers (palette + presets reachable on small viewports) */}
+          <span className="ml-auto flex items-center gap-1.5">
+            <span className="hidden sm:inline">ENGINE TICK #{fN(ms.tickCount, 0)}</span>
+            {tab.deskNo !== undefined && (
+              <button
+                onClick={() => setPaletteOpen((o) => !o)}
+                title="Workspace command palette (⌘K) — navigate, colourline, exports, crisis"
+                aria-label="Open workspace command palette"
+                className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"
+              >
+                <SquareTerminal size={12} aria-hidden />
+              </button>
+            )}
+            <button
+              onClick={() => setPresetsOpen((o) => !o)}
+              title="Layout presets (P) — save / load named workspace snapshots"
+              aria-label="Open layout presets"
+              className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"
+            >
+              <Bookmark size={12} aria-hidden />
+            </button>
+          </span>
         </div>
         <Active />
       </main>
@@ -395,6 +426,13 @@ export default function Shell() {
               <kbd className="kbd-hint">1-9</kbd><kbd className="kbd-hint">0</kbd> DESK 01-10
               <kbd className="kbd-hint">Q</kbd><kbd className="kbd-hint">W</kbd><kbd className="kbd-hint">E</kbd> DESK 11-13
               <kbd className="kbd-hint">F</kbd> PIN
+              <button
+                onClick={() => setPresetsOpen(true)}
+                title="Layout presets — save / load named workspace snapshots"
+                className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+              >
+                <kbd className="kbd-hint">P</kbd> PRESETS
+              </button>
               <kbd className="kbd-hint">V</kbd> COLOURLINE
               {activeTab !== 0 && (
                 <>

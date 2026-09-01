@@ -18,6 +18,7 @@ const WORKSPACE_KEYS: Array<{ keys: string[]; action: string; tone: keyof typeof
   { keys: ['0'], action: 'Jump to desk 10 — CENTRAL BANK LIQ', tone: 'text' },
   { keys: ['Q', 'W', 'E'], action: 'Jump to desks 11–13 (CRYPTO / STAT-ARB / INFRA)', tone: 'text' },
   { keys: ['F'], action: 'Pin / unpin the active desk (★ persists)', tone: 'warn' },
+  { keys: ['P'], action: 'Layout presets — save / load named workspace snapshots', tone: 'accent' },
   { keys: ['V'], action: 'Flip colourline — MK-II NAVY ↔ HFT MATRIX', tone: 'accent' },
   { keys: ['?'], action: 'This workspace reference card', tone: 'accent' },
   { keys: ['⌘', 'K'], action: 'Workspace command palette on the 13 desks (landing keeps its own)', tone: 'accent' },
@@ -40,6 +41,7 @@ const STEERING_LINES: string[] = [
   'Interceptor chips — BLOCK MEAN REVERSION / REDUCE SIZE / EMERGENCY FLATTENING engage on a staged schedule once the cascade is live; click to arm or disarm manually.',
   'Colourline switch (header) re-renders every desk and chart against the other palette; the choice persists across reloads and the market engine never misses a tick during the cut-over.',
   '★ pins persist per desk — hover a tab and click the star (or press F while the desk is active) to build your own quick-access rail in the footer; DRAG the rail chips to reorder them, the order is saved with the workspace.',
+  'Layout presets (P) snapshot the WHOLE workspace — active tab, sub-tabs, instrument selections and pins — under a name; LOAD restores it in one click. Presets are stored separately, so the layout factory reset never destroys them.',
 ];
 
 export function WorkspaceHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
@@ -57,7 +59,7 @@ export function WorkspaceHelp({ open, onOpenChange }: { open: boolean; onOpenCha
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="bg-kheader border-kborder2 max-w-2xl max-h-[85vh] overflow-y-auto krupp-scroll"
+        className="bg-kheader border-kborder2 max-h-[85vh] overflow-y-auto krupp-scroll sm:max-w-2xl"
         aria-describedby={undefined}
       >
         <DialogHeader className="text-left">

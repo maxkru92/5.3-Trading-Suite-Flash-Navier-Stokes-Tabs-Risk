@@ -281,6 +281,36 @@
   --rgb-violet: 157 0 255;
   --rgb-grid: 26 26 36;
 
+  /* KRUPP k* semantic palette — re-pointed per colourline (matches ThemeTokens
+     'hft' in src/lib/theme.ts 1:1) so the desk chrome flips WITH the cut-over.
+     kcrit family intentionally invariant (crisis crimson). */
+  --color-kbg: #020202;
+  --color-kbg-deep: #030308;
+  --color-kpanel: #08080c;
+  --color-kpanel2: #0b0b12;
+  --color-kheader: #06060a;
+  --color-kinset: #05050b;
+  --color-kborder: #1a1a24;
+  --color-kborder2: #232330;
+  --color-kborder3: #15151f;
+  --color-kborder4: #2a2a38;
+  --color-kgrid: #1a1a24;
+  --color-ktext: #d8ffe9;
+  --color-kdim: #5c6b64;
+  --color-kfaint: #3d4a42;
+  --color-kaccent: #00ff66;
+  --color-kaccent-soft: #7dffc0;
+  --color-kaccent-strong: #00cc52;
+  --color-kaccent-deep: #00330f;
+  --color-kup: #00ff66;
+  --color-kdown: #ff1133;
+  --color-kwarn: #ff8800;
+  --color-kviolet: #9d00ff;
+  --color-kteal: #00e5cc;
+  --color-korange: #ff8800;
+  --color-kyellow: #ffd166;
+  --color-kzinc: #7d8f86;
+
   /* 13-desk palette cross-over: every MK-II hue remapped to the phosphor line */
   --color-cyan-200: #a3ffd0;
   --color-cyan-300: #7dffc0;
@@ -589,6 +619,11 @@
 .krupp-scroll::-webkit-scrollbar-thumb { background: #1f2a24; border-radius: 0; }
 .krupp-scroll::-webkit-scrollbar-thumb:hover { background: rgb(var(--rgb-brand) / 0.333); }
 .krupp-scroll { scrollbar-width: thin; scrollbar-color: #1f2a24 var(--k-bg-deep); }
+
+/* Dialog grid fix — the default single `auto` track lets nowrap/truncate
+   content inflate min-content and overflow the dialog on narrow screens.
+   minmax(0,1fr) keeps the track shrinkable so truncate behaves. */
+[data-slot='dialog-content'] { grid-template-columns: minmax(0, 1fr); }
 
 /* ---------- order book bars ---------- */
 .book-bar-ask {
@@ -1102,3 +1137,5 @@
     text-align: center;
   }
 }
+
+/* colourline hft k* re-point r6 */

@@ -19,7 +19,7 @@ import {
   CommandItem, CommandList, CommandSeparator,
 } from '@/components/ui/command';
 import {
-  FileDown, Keyboard, Palette, RotateCcw, Square, Star,
+  Bookmark, FileDown, Keyboard, Palette, RotateCcw, Square, Star,
   TriangleAlert,
 } from 'lucide-react';
 import { useKrupp, useRevision } from '@/lib/krupp/store';
@@ -41,10 +41,12 @@ export function WorkspacePalette({
   open,
   onOpenChange,
   onRequestHelp,
+  onRequestPresets,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onRequestHelp: () => void;
+  onRequestPresets: () => void;
 }) {
   useRevision(); // keeps the crisis group honest while the palette is open
   const theme = useTheme((s) => s.theme);
@@ -112,6 +114,15 @@ export function WorkspacePalette({
         {/* ------------- workspace ------------- */}
         <CommandGroup heading="WORKSPACE">
           <PinItem onRun={run} />
+          <CommandItem
+            value="layout presets save load snapshot workspace bookmark restore"
+            onSelect={run(onRequestPresets)}
+            className="font-mono text-[11px]"
+          >
+            <Bookmark size={13} style={{ color: KT('accent') }} aria-hidden />
+            Layout presets — save / load named snapshots
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground">P</span>
+          </CommandItem>
           <CommandItem
             value="workspace hotkey map help reference keyboard"
             onSelect={run(onRequestHelp)}

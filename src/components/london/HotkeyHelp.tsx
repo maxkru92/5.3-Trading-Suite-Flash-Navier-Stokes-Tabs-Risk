@@ -71,7 +71,7 @@ export function HotkeyHelp() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className="bg-kheader border-gridline max-w-2xl max-h-[85vh] overflow-y-auto krupp-scroll"
+        className="bg-kheader border-gridline max-h-[85vh] overflow-y-auto krupp-scroll sm:max-w-2xl"
         aria-describedby={undefined}
       >
         <DialogHeader className="text-left">

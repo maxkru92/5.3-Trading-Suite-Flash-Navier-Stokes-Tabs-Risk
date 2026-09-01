@@ -178,8 +178,8 @@ export function SystemHeader() {
         </div>
 
         {/* Firebase token control */}
-        <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1.5 xl:justify-center min-w-0 w-full xl:w-auto flex-wrap">
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 max-w-xl min-h-[28px]">
+        <div className="flex-1 flex flex-col xl:flex-row xl:items-center gap-1.5 xl:justify-center min-w-0 w-full xl:w-auto">
+          <div className="flex items-center gap-1.5 flex-1 min-h-[28px]">
             <KeyRound size={13} className="text-muted-foreground shrink-0" aria-hidden />
             <Input
               type={show ? 'text' : 'password'}
@@ -187,7 +187,7 @@ export function SystemHeader() {
               onChange={(e) => setToken(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && connect()}
               placeholder="Firebase Bearer Token — paste or mint a desk credential"
-              className="h-7 text-[11px] bg-input/60 border-input font-mono rounded-sm min-w-[170px] flex-1 w-full"
+              className="h-7 text-[11px] bg-input/60 border-input font-mono rounded-sm min-w-[170px] max-w-xl flex-1 w-full"
               aria-label="Firebase Bearer Token"
               spellCheck={false}
             />

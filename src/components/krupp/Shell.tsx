@@ -161,6 +161,21 @@ export default function Shell() {
     return () => window.removeEventListener('krupp:crisis-end', onCrisisEnd);
   }, []);
 
+  /* ---- r11: dwell heartbeat — charges wall-clock time to the ACTIVE desk
+   * every 60s so the digest's TIME ON DESKS stays current without tab
+   * switches; pagehide (and the theme-remount unmount) flush the tail chunk.
+   * Tab switches flush inside the store's setActiveTab. ---- */
+  useEffect(() => {
+    const beat = setInterval(() => useKrupp.getState().tickDwell(), 60_000);
+    const onHide = () => useKrupp.getState().tickDwell();
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      clearInterval(beat);
+      window.removeEventListener('pagehide', onHide);
+      useKrupp.getState().tickDwell();
+    };
+  }, []);
+
   /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
          F pin/unpin active desk · P layout presets (anywhere) · J session
          journal (anywhere) · G post-mortem digest (anywhere) · V colourline ·

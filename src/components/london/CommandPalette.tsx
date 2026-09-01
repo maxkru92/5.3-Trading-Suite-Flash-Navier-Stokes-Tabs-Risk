@@ -286,6 +286,16 @@ export function CommandPalette() {
           })} className="font-mono text-[11px]">
             <NotebookPen size={13} style={{ color: K.green }} /> Export session journal <span className="ml-auto text-muted-foreground text-[9px]">CSV · desk-side logbook</span>
           </CommandItem>
+          <CommandItem onSelect={run(() => {
+            const a = document.createElement('a')
+            a.href = '/api/events?format=csv'
+            a.download = ''
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+          })} className="font-mono text-[11px]">
+            <AlertOctagon size={13} style={{ color: K.red }} /> Export risk-event audit trail <span className="ml-auto text-muted-foreground text-[9px]">CSV · sentinel trips + regime shifts</span>
+          </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="VIEW">

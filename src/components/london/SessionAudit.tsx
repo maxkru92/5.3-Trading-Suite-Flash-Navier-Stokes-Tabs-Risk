@@ -107,6 +107,24 @@ export function SessionAudit() {
           <PrintReportButton
             className="h-6 px-1.5 inline-flex items-center gap-1 text-[7.5px] tracking-[0.16em] font-bold text-muted-foreground hover:text-cyan-300 hover:bg-cyan-950/30"
           />
+          {/* r11 — raw audit-trail CSV (server-side stream, all persisted rows) */}
+          <Button
+            variant="ghost" size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-cyan-300"
+            onClick={() => {
+              const a = document.createElement('a')
+              a.href = '/api/events?format=csv'
+              a.download = ''
+              document.body.appendChild(a)
+              a.click()
+              a.remove()
+            }}
+            aria-label="Export audit trail as CSV"
+            title="Export the persisted risk-event audit trail as CSV (all rows)"
+            type="button"
+          >
+            <Archive size={12} aria-hidden />
+          </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-green-400" onClick={() => void load()} aria-label="Refresh audit ledger" type="button">
             <RefreshCw size={12} className={busy ? 'animate-spin' : ''} />
           </Button>

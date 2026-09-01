@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Check, ClipboardList, Copy, FileDown, NotebookPen, RefreshCw, TriangleAlert,
+  Check, ClipboardList, Clock, Copy, FileDown, NotebookPen, RefreshCw, TriangleAlert,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useKrupp as useWorkspace, useRevision } from '@/lib/krupp/store';
@@ -81,6 +81,15 @@ function utc(ts: number): string {
 
 const usd = (v: number): string => `${v >= 0 ? '+' : '−'}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
+/** r11 — compact human span for the dwell ledger: 42m · 2h 05m · <1m */
+function fmtSpan(ms: number): string {
+  const m = Math.round(ms / 60_000);
+  if (m < 1) return '<1m';
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${String(m % 60).padStart(2, '0')}m`;
+}
+
 /** section row — label / dotted leader / value (tabular, theme-resolved tone) */
 function Row({ label, value, tone, title, mono = true }: {
   label: string; value: React.ReactNode; tone?: string; title?: string; mono?: boolean;
@@ -121,6 +130,7 @@ export function WorkspaceDigest({ open, onOpenChange }: { open: boolean; onOpenC
   const presets = useWorkspace((s) => s.presets);
   const sfxOn = useWorkspace((s) => s.sfxOn);
   const clientId = useWorkspace((s) => s.clientId);
+  const dwell = useWorkspace((s) => s.dwell);
   const theme = useTheme((s) => s.theme);
   const regime = useLondon((s) => s.metrics.regime);
   const score = useLondon((s) => s.metrics.score);
@@ -181,6 +191,14 @@ export function WorkspaceDigest({ open, onOpenChange }: { open: boolean; onOpenC
       `  ENGINE TICK     #${fN(ms.tickCount, 0)} · ${fN(infra.tps.length ? infra.tps.last() : 0, 0)} tps`,
       `  LONDON REGIME   ${String(regime ?? '—').toUpperCase()} · SCORE ${(score ?? 0).toFixed(1)}`,
       `  CRISIS STATE    ${ms.crisis.active ? `ACTIVE (cycle #${ms.crisis.count})` : `IDLE · ${ms.crisis.count} cycle(s) this boot`}`,
+      '',
+      '[TIME ON DESKS]',
+      `  TRACKED SPAN    ${dwellTotal ? fmtSpan(dwellTotal) : '—'} across ${dwellRows.length} desk(s)`,
+      ...dwellRows.slice(0, 4).map((r) => {
+        const pct = dwellTotal ? Math.round((r.ms / dwellTotal) * 100) : 0;
+        const label = (TABS[r.tab]?.label ?? `DESK ${r.tab}`).slice(0, 18).padEnd(18);
+        return `  ${String(r.tab).padStart(2, '0')} ${label}  ${String(pct).padStart(3)}% · ${fmtSpan(r.ms)}`;
+      }),
       '',
       '[EXECUTION LEDGER — SQLITE]',
       `  PERSISTED ROWS  ${L ? fN(L.total, 0) : '—'} (futures + options)`,
@@ -249,6 +267,13 @@ export function WorkspaceDigest({ open, onOpenChange }: { open: boolean; onOpenC
   const worst = sess.length ? Math.min(...sess.map((s) => s.realized)) : null;
   const latest = J?.latest?.[0] ?? null;
   const regimeTone = regime === 'CRISIS' ? KT('down') : regime === 'HIGH' ? KT('warn') : KT('accent');
+
+  /* ---- r11: dwell ledger — top desks with share of tracked time ---- */
+  const dwellRows = Object.entries(dwell)
+    .map(([k, v]) => ({ tab: Number(k), ms: v }))
+    .filter((r) => r.tab >= 0 && r.tab <= 13 && r.ms > 30_000) // ignore sub-minute churn
+    .sort((a, b) => b.ms - a.ms);
+  const dwellTotal = dwellRows.reduce((a, r) => a + r.ms, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -333,6 +358,48 @@ export function WorkspaceDigest({ open, onOpenChange }: { open: boolean; onOpenC
             value={ms.crisis.active ? `ACTIVE · CYCLE #${ms.crisis.count}` : `IDLE · ${ms.crisis.count} CYCLE(S) THIS BOOT`}
             tone={ms.crisis.active ? KT('down') : KT('textFaint')}
           />
+        </Section>
+
+        {/* ---- time on desks (dwell ledger) ---- */}
+        <Section
+          icon={<Clock size={11} style={{ color: KT('accent') }} aria-hidden />}
+          title="TIME ON DESKS"
+          right={dwellTotal ? `${fmtSpan(dwellTotal)} TRACKED · ${dwellRows.length} DESK(S)` : 'LEDGER EMPTY'}
+        >
+          {dwellRows.length === 0 && (
+            <div className="py-2 text-center font-mono text-[9px] tracking-[0.18em] text-muted-foreground">
+              NO DWELL RECORDED YET — TIME ACCRUES PER ACTIVE DESK (60s HEARTBEAT)
+            </div>
+          )}
+          {dwellRows.slice(0, 4).map((r, i) => {
+            const pct = dwellTotal ? Math.round((r.ms / dwellTotal) * 100) : 0;
+            return (
+              <div key={r.tab} className="flex items-center gap-2" title={`${TABS[r.tab]?.label ?? `Desk ${r.tab}`} — ${fmtSpan(r.ms)} of ${fmtSpan(dwellTotal)} tracked (${pct}%)`}>
+                <span className="w-[132px] shrink-0 truncate font-mono text-[9px] tracking-[0.08em] text-muted-foreground">
+                  <span className="font-bold text-foreground/80">{String(r.tab).padStart(2, '0')}</span> {TABS[r.tab]?.label ?? `DESK ${r.tab}`}
+                </span>
+                <span className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-kborder2/50" role="presentation">
+                  <span
+                    className="block h-full rounded-full"
+                    style={{
+                      width: `${Math.max(2, pct)}%`,
+                      background: i === 0 ? KT('accent') : KT('cyan'),
+                      boxShadow: i === 0 ? `0 0 6px ${KT('accent')}88` : undefined,
+                      opacity: i === 0 ? 1 : 0.65,
+                    }}
+                  />
+                </span>
+                <span className="w-[92px] shrink-0 text-right font-mono text-[9.5px] font-bold tabular-nums" style={{ color: i === 0 ? KT('accent') : KT('textMuted') }}>
+                  {String(pct).padStart(3, ' ')}% · {fmtSpan(r.ms)}
+                </span>
+              </div>
+            );
+          })}
+          {dwellRows.length > 4 && (
+            <div className="pt-0.5 text-right font-mono text-[8px] tracking-[0.14em] text-muted-foreground">
+              + {dwellRows.length - 4} MORE DESK(S) IN THE LEDGER
+            </div>
+          )}
         </Section>
 
         {/* ---- execution ledger ---- */}

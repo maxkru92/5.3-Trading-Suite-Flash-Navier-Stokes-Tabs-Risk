@@ -51,7 +51,7 @@ const CONTROLS: Array<{ area: string; lines: string[] }> = [
     '⌘K palette now carries NAVIGATE (all 14 tabs) and WORKSPACE (colourline cut-over, layout presets, session journal) alongside the desk verbs.',
     'Layout presets capture the whole workspace (tab, sub-tabs, selections, pins) — rename/duplicate rows in the presets dialog; a demo MORNING BOOK preset is planted on first boot. The presets dialog also reorders the pinned quick rail with ↑/↓ (works on touch, no drag needed).',
     'Session journal (J) — logbook rows persist in SQLite, stamp the active desk + regime + composite score, and export as CSV for the post-mortem.',
-    'Post-mortem digest (G) — one dialog aggregating workspace state, engine telemetry, SQLite ledger aggregates and the latest journal note; COPY AS TEXT / EXPORT .TXT feed the post-mortem review.',
+    'Post-mortem digest (G) — one dialog aggregating workspace state, engine telemetry, SQLite ledger aggregates, the TIME ON DESKS dwell breakdown and the latest journal note; COPY AS TEXT / EXPORT .TXT feed the post-mortem review.',
     'Desk audio — the landing alarm toggle and the desks footer SFX chip both arm the sfx kernel: per-sentinel call signs (six distinct motifs) and a desk-pitched crisis klaxon.',
   ] },
   { area: 'EXECUTION & AUDIT (BOTTOM ROW)', lines: [

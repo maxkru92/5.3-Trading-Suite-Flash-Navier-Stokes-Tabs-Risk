@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 // KRUPP CAPITAL // persisted risk events (regime shifts, auth lifecycle, crash injections)
+//   GET    ?limit=N — latest events + aggregate stats
+//   GET    ?format=csv — full audit-trail export (r11)
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,6 +44,32 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    // --- full audit-trail CSV export: ?format=csv ---------------------------
+    // Streams the persisted risk events (regime shifts, sentinel trips, auth
+    // lifecycle, crash injections) as a spreadsheet-ready CSV — same audit
+    // pattern as the ledger / volhistory / journal exports.
+    if (req.nextUrl.searchParams.get('format') === 'csv') {
+      const all = await db.riskEvent.findMany({ orderBy: { createdAt: 'asc' }, take: 5000 })
+      const esc = (v: unknown): string => {
+        const s = v == null ? '' : String(v)
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+      }
+      const head = 'id,timestamp_utc,type,severity,source,message,dedupe_key'
+      const body = all.map((r) => [
+        r.id, r.createdAt.toISOString(), r.type, r.severity, r.source, r.message, r.dedupeKey ?? '',
+      ].map(esc).join(','))
+      const csv = [head, ...body].join('\n')
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      return new NextResponse(csv, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="krupp-events-${stamp}.csv"`,
+          'Cache-Control': 'no-store',
+        },
+      })
+    }
+
     const limit = Math.min(100, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? 30)))
     const [events, byType, critCount] = await Promise.all([
       db.riskEvent.findMany({ orderBy: { createdAt: 'desc' }, take: limit }),

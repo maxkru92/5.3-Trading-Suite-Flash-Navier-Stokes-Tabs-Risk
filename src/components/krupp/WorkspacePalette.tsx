@@ -236,6 +236,15 @@ export function WorkspacePalette({
             Export session journal (desk logbook · CSV)
             <span className="ml-auto font-mono text-[9px] text-muted-foreground">krupp-journal-*.csv</span>
           </CommandItem>
+          <CommandItem
+            value="export risk events csv audit trail sentinel trips regime shifts critical crash"
+            onSelect={run(() => csvDownload('/api/events?format=csv'))}
+            className="font-mono text-[11px]"
+          >
+            <TriangleAlert size={13} style={{ color: KT('down') }} aria-hidden />
+            Export risk-event audit trail (sentinel trips · CSV)
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground">krupp-events-*.csv</span>
+          </CommandItem>
         </CommandGroup>
         <CommandSeparator />
 

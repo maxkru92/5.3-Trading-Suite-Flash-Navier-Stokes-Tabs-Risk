@@ -28,6 +28,7 @@ const WS_KEY = 'krupp-workspace';
 const PRESETS_KEY = 'krupp-presets';
 const SFX_KEY = 'krupp-sfx';
 const CLIENT_ID_KEY = 'krupp-client-id';
+const DWELL_KEY = 'krupp-dwell';
 const MAX_PRESETS = 12;
 const MAX_NAME = 24;
 
@@ -64,6 +65,15 @@ interface KruppState {
   journalOpen: boolean;
   /** shared UI slice — the post-mortem digest dialog (G hotkey, ⌘K, rail chip) */
   digestOpen: boolean;
+  /** per-desk dwell time (accumulated ms, persisted 'krupp-dwell') — feeds
+   *  the digest's TIME ON DESKS breakdown; survives reloads, survives the
+   *  layout factory reset (analytics, not layout) */
+  dwell: Record<number, number>;
+  /** charge the pending dwell chunk to the ACTIVE tab + persist (60s Shell
+   *  heartbeat + pagehide + tab switches all route here) */
+  tickDwell(): void;
+  /** zero the dwell ledger ('krupp-dwell' cleared) — audit-friendly */
+  resetDwell(): void;
   setActiveTab(t: number): void;
   setSubTab(desk: number, i: number): void;
   select(key: string, sym: string): void;
@@ -183,6 +193,51 @@ function hydrateSfx(): boolean {
   }
 }
 
+/* ---- r11: PER-DESK DWELL TIME -------------------------------------------
+ * Accumulated wall-clock ms per tab, persisted under 'krupp-dwell' and fed
+ * to the post-mortem digest's TIME ON DESKS section. Flush points: every
+ * setActiveTab, a 60s Shell heartbeat, and pagehide — so long sessions stay
+ * fresh even without tab switches. Elapsed chunks clamp at 5 minutes (a
+ * sleeping laptop must not book hours of phantom dwell). ---------------- */
+let lastDwellAt = Date.now();
+
+function loadDwell(): Record<number, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(DWELL_KEY);
+    if (!raw) return {};
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    const out: Record<number, number> = {};
+    for (const [k, v] of Object.entries(p)) {
+      const tab = Number(k);
+      if (Number.isInteger(tab) && tab >= 0 && tab <= 13 && typeof v === 'number' && isFinite(v) && v >= 0) {
+        out[tab] = Math.min(v, 1000 * 3600 * 24 * 7); // sanity cap: 7d per tab
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function persistDwell(dwell: Record<number, number>) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DWELL_KEY, JSON.stringify(dwell));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** charge the elapsed chunk to `activeTab` and move the flush marker */
+function flushDwell(dwell: Record<number, number>, activeTab: number): Record<number, number> {
+  const now = Date.now();
+  const dt = Math.min(Math.max(0, now - lastDwellAt), 5 * 60_000);
+  lastDwellAt = now;
+  if (dt < 1_000) return dwell; // sub-second churn — not worth a write
+  return { ...dwell, [activeTab]: (dwell[activeTab] ?? 0) + dt };
+}
+
 const boot = loadWorkspace();
 const bootPresets = loadPresets();
 
@@ -221,6 +276,17 @@ export const useKrupp = create<KruppState>()((set, get) => ({
   presetsOpen: false,
   journalOpen: false,
   digestOpen: false,
+  dwell: loadDwell(),
+  tickDwell: () => {
+    const dwell = flushDwell(get().dwell, get().activeTab);
+    set({ dwell });
+    persistDwell(dwell);
+  },
+  resetDwell: () => {
+    lastDwellAt = Date.now();
+    set({ dwell: {} });
+    persistDwell({});
+  },
   setPresetsOpen: (v) => set({ presetsOpen: v }),
   setJournalOpen: (v) => set({ journalOpen: v }),
   setDigestOpen: (v) => set({ digestOpen: v }),
@@ -246,8 +312,11 @@ export const useKrupp = create<KruppState>()((set, get) => ({
     }
   },
   setActiveTab: (t) => {
-    set({ activeTab: t });
+    // charge the pending dwell chunk to the tab being LEFT before the switch
+    const dwell = flushDwell(get().dwell, get().activeTab);
+    set({ activeTab: t, dwell });
     persistWorkspace(get());
+    persistDwell(dwell);
   },
   setSubTab: (desk, i) => {
     set((s) => ({ subTabs: { ...s.subTabs, [desk]: i } }));

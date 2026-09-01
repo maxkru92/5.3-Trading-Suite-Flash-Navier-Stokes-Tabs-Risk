@@ -30,6 +30,7 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
       )}
       {THEME_ORDER.map((t: ThemeId) => {
         const active = t === theme;
+        const short = t === 'mk2' ? 'MK2' : 'HFT';
         return (
           <button
             key={t}
@@ -42,7 +43,8 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
                 : 'border-transparent text-kdim hover:border-kborder4 hover:text-ktext'
             }`}
           >
-            {THEMES[t].name}
+            <span className="md:hidden">{short}</span>
+            <span className="hidden md:inline">{THEMES[t].name}</span>
           </button>
         );
       })}

@@ -12,7 +12,7 @@
  * A theme flip remounts the workspace (key={theme}) so every canvas redraws
  * against the new palette; module-scope engines keep running uninterrupted.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Activity, Sigma, TrendingUp, Landmark, Coins, Flame, DollarSign,
   Building2, Layers, Droplets, Bitcoin, Radar, ServerCog,
@@ -21,8 +21,8 @@ import {
 import { bootstrapKrupp, ms, startCrisis, endCrisis } from '@/lib/krupp/engine';
 import { infra } from '@/lib/krupp/infraservice';
 import { useKrupp, useRevision } from '@/lib/krupp/store';
-import { fClock, fCountdown, fN } from '@/lib/krupp/format';
-import { hydrateTheme, useTheme } from '@/lib/theme';
+import { fClock, fCountdown, fN, fPx, fPct } from '@/lib/krupp/format';
+import { hydrateTheme, useTheme, THEMES } from '@/lib/theme';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { CrisisOverlay } from './CrisisOverlay';
 import LondonEdge from '@/components/london/LondonEdge';
@@ -114,6 +114,24 @@ function InterceptorChip({
   );
 }
 
+/** Live engine readout chip for the workspace breadcrumb rail (5 Hz). */
+function TickerChip({ sym, label }: { sym: string; label?: string }) {
+  const inst = ms.inst[sym];
+  if (!inst) return null;
+  const up = inst.changePct >= 0;
+  return (
+    <span className="hidden items-center gap-1.5 rounded border border-kborder2 bg-kpanel px-1.5 py-0.5 md:inline-flex" title={inst.def.name}>
+      <span className="font-mono text-[9px] tracking-wider text-zinc-500">{label ?? sym.replace('1!', '')}</span>
+      <span className={`font-mono text-[10px] font-semibold tabular-nums ${up ? 'text-emerald-400' : 'text-rose-400'}`}>
+        {fPx(inst.last, inst.def.dec)}
+      </span>
+      <span className={`font-mono text-[9px] tabular-nums ${up ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
+        {fPct(inst.changePct)}
+      </span>
+    </span>
+  );
+}
+
 export default function Shell() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -126,6 +144,45 @@ export default function Shell() {
   const activeTab = useKrupp((s) => s.activeTab);
   const setActiveTab = useKrupp((s) => s.setActiveTab);
   useRevision(); // 5 Hz re-render of status surfaces
+
+  /* ---- colourline cut-over flash (rendered OUTSIDE the keyed workspace) ---- */
+  const [flash, setFlash] = useState(0);
+  const prevTheme = useRef(theme);
+  useEffect(() => {
+    if (prevTheme.current !== theme) {
+      prevTheme.current = theme;
+      setFlash((f) => f + 1);
+    }
+  }, [theme]);
+
+  /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 · V colourline
+         (plain keys are skipped on the LONDON EDGE tab — the landing terminal
+          owns its own single-key routing: 1/2/3 symbols, C crash, R reset, T engage) ---- */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        useTheme.getState().toggleTheme();
+        return;
+      }
+      if (activeTab === 0) return; // landing terminal owns plain keys
+      const map: Record<string, number> = {
+        l: 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
+        '6': 6, '7': 7, '8': 8, '9': 9, '0': 10, q: 11, w: 12, e: 13,
+      };
+      const idx = map[e.key.toLowerCase()];
+      if (idx !== undefined) {
+        e.preventDefault();
+        setActiveTab(idx);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeTab, setActiveTab]);
 
   if (!mounted) {
     return (
@@ -154,14 +211,19 @@ export default function Shell() {
   const Icon = tab.icon;
 
   return (
-    <div
-      key={theme}
-      className="flex min-h-screen flex-col bg-kbg text-zinc-200"
-    >
+    <>
+      {/* colourline cut-over sweep — above the workspace, never intercepts input */}
+      {flash > 0 && (
+        <div key={flash} className="theme-cut pointer-events-none fixed inset-0 z-[95]" aria-hidden />
+      )}
+      <div
+        key={theme}
+        className="flex min-h-screen flex-col bg-kbg text-zinc-200 print:bg-white"
+      >
       <CrisisOverlay />
 
-      {/* ------------- header ------------- */}
-      <header className="sticky top-0 z-40 border-b border-kborder bg-kheader/95 backdrop-blur">
+      {/* ------------- header (hidden on print while the LONDON EDGE A4 report owns the paper) ------------- */}
+      <header className={`sticky top-0 z-40 border-b border-kborder bg-kheader/95 backdrop-blur ${tab.deskNo === undefined ? 'print:hidden' : ''}`}>
         <div className="flex items-center justify-between gap-3 px-3 py-2">
           <div className="flex items-center gap-3">
             <div className={`flex h-8 w-8 items-center justify-center rounded border ${crisis.active ? 'border-rose-500/70 bg-rose-950/50' : 'border-kborder2 bg-kpanel'}`}>
@@ -219,20 +281,27 @@ export default function Shell() {
 
       {/* ------------- active workspace ------------- */}
       <main className="flex-1 px-2 py-3 md:px-3">
-        <div className="mb-2 flex items-center gap-2 font-mono text-[10px] tracking-widest text-zinc-600">
+        <div className="mb-2 flex items-center gap-2 font-mono text-[10px] tracking-widest text-zinc-600 print:hidden">
           <Icon size={12} />
           <span>
             {tab.deskNo
               ? `DESK ${String(tab.deskNo).padStart(2, '0')} / 13 — ${tab.label}`
               : `LANDING TERMINAL — ${tab.label} // L3 RISK DESK`}
           </span>
+          <span className="ml-1 hidden items-center gap-1.5 lg:inline-flex" aria-hidden>
+            <span className="h-3 w-px bg-kborder2" />
+          </span>
+          <TickerChip sym="ES1!" label="ES" />
+          <TickerChip sym="NQ1!" label="NQ" />
+          <TickerChip sym="VIX" label="VIX" />
+          <TickerChip sym="BTC-USD" label="BTC" />
           <span className="ml-auto hidden sm:inline">ENGINE TICK #{fN(ms.tickCount, 0)}</span>
         </div>
         <Active />
       </main>
 
-      {/* ------------- persistent steering block ------------- */}
-      <footer className="sticky bottom-0 z-40 border-t border-kborder bg-kheader/97 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+      {/* ------------- persistent steering block (hidden on print with the landing report) ------------- */}
+      <footer className={`sticky bottom-0 z-40 border-t border-kborder bg-kheader/97 pb-[env(safe-area-inset-bottom)] backdrop-blur ${tab.deskNo === undefined ? 'print:hidden' : ''}`}>
         <div className="flex flex-wrap items-center gap-2 px-3 py-2">
           {crisis.active ? (
             <>
@@ -282,13 +351,26 @@ export default function Shell() {
             />
           </div>
         </div>
-        <div className="flex items-center justify-between border-t border-kinset px-3 py-1 font-mono text-[9px] tracking-wider text-zinc-600">
-          <span>KRUPP CAPITAL // INSTITUTIONAL TERMINAL MK-III — ALL FEEDS SIMULATED IN-SANDBOX</span>
+        <div className="flex items-center justify-between gap-3 border-t border-kinset px-3 py-1 font-mono text-[9px] tracking-wider text-zinc-600">
+          <span className="flex items-center gap-2">
+            <span className="hidden md:inline">KRUPP CAPITAL // INSTITUTIONAL TERMINAL MK-III — ALL FEEDS SIMULATED IN-SANDBOX</span>
+            <span className="md:hidden">KRUPP CAPITAL // MK-III</span>
+            <span className="hidden items-center gap-1 lg:flex" aria-hidden>
+              <span className="h-2.5 w-px bg-kborder2" />
+            </span>
+            <span className="hidden items-center gap-1.5 lg:flex" title="Workspace hotkeys — plain keys are live on the 13 desks; the landing terminal keeps its own routing keys">
+              <kbd className="kbd-hint">L</kbd> EDGE
+              <kbd className="kbd-hint">1-9</kbd><kbd className="kbd-hint">0</kbd> DESK 01-10
+              <kbd className="kbd-hint">Q</kbd><kbd className="kbd-hint">W</kbd><kbd className="kbd-hint">E</kbd> DESK 11-13
+              <kbd className="kbd-hint">V</kbd> COLOURLINE
+            </span>
+          </span>
           <span className="hidden sm:inline">
-            ENGINE {fN(tps, 0)} tps · REV {useKrupp.getState().revision} · COLOURLINE {useTheme.getState().theme.toUpperCase()}
+            ENGINE {fN(tps, 0)} tps · REV {useKrupp.getState().revision} · COLOURLINE {THEMES[useTheme.getState().theme].name}
           </span>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }

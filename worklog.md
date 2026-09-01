@@ -22,3 +22,22 @@ Stage Summary:
 - Key files: src/lib/theme.ts, src/components/krupp/Shell.tsx, src/components/krupp/ThemeSwitcher.tsx, src/components/london/LondonEdge.tsx, src/app/globals.css, src/app/layout.tsx, prisma/schema.prisma, mini-services/krupp-stream, public/workers/krupp-risk-engine.js.
 - Verification: `bun run lint` clean, `bunx tsc --noEmit` clean for src/, dev server 200s, all APIs OK, browser-verified interactivity in both colourlines.
 - Known notes: (1) London socket feed requires the Caddy gateway path (io('/?XTransformPort=3030')) — direct :3000 browsing bypasses the relay; preview MUST go through the preview panel/gateway. (2) Theme flip remounts the workspace by design (engines keep state). (3) Crisis crimson + print pipeline are intentionally theme-invariant.
+
+---
+Task ID: 2
+Agent: Z.ai cron webDevReview (round 2)
+Task: QA sweep of the MK-III dual-colourline terminal, bug fixes, styling detail + new features (workspace persistence, hotkeys, ticker, print pipeline hardening).
+
+Work Log:
+- QA sweep via agent-browser through the :81 gateway: landing live (risk 48.6 CALM, Hawkes λ live, IV surface populated), persisted HFT colourline survived reload, zero console errors. No regressions found on desks/theme switch.
+- NEW FEATURE — workspace persistence: `src/lib/krupp/store.ts` now persists activeTab (validated 0-13), per-desk subTabs and desk selections to localStorage ('krupp-workspace') inside the setters (never the 5 Hz revision counter). Reload restores the exact workspace state (verified: reload → STAT-ARB desk 12 restored).
+- NEW FEATURE — desk hotkeys + footer legend: L → LONDON EDGE, 1-9/0 → desks 01-10, Q/W/E → desks 11-13, V → colourline toggle. Plain keys are intentionally skipped while the landing tab is active (the London terminal owns 1/2/3/C/R/T via its CommandPalette) — no conflicts (verified '3'→INDEX FUTURES, 'w'→STAT-ARB, 'l'→London). Legend rendered as kbd-hint chips in the footer status line (lg+ only).
+- STYLING — colourline cut-over flash: theme flip now plays a 0.6s brand-tinted sweep overlay (`.theme-cut`, rendered OUTSIDE the keyed workspace so the remount doesn't kill it; CSS given base opacity 0 so the tint only shows during animation). Added missing `--glow-accent` var to both theme blocks (ThemeSwitcher active-segment glow now actually renders).
+- STYLING — live engine ticker: breadcrumb rail now streams ES/NQ/VIX/BTC price+Δ chips from the MK-II engine at 5 Hz (TickerChip, theme-aware tones), plus a divider; visible on md+.
+- STYLING — mobile theme switcher: compact MK2/HFT short labels below md (no more two-line wrap), full names on md+.
+- BUGFIX — print pipeline (A4 report): the PDF used to print with dark page canvas and the MK-II breadcrumb leaking onto the paper. Root causes fixed: (1) Shell root div painted bg-kbg through main's padding → `print:bg-white` on the shell root; (2) breadcrumb row → `print:hidden`; (3) header/footer → `print:hidden` while the London report owns the paper; (4) `@media print` now forces `color-scheme: light`, `html/body` white !important, `body.bg-background` hammer, `.print-doc` white + print-color-adjust exact + inline style fallback, `.print-doc *` background neutralization with explicit re-asserts for th/flip grays. Verified by pixel-sampling rasterized PDF pages: all corners + content area pure white, classbar/kernel/IV tables crisp black-on-white (qa-r2-print-v9.pdf).
+- Verification: bun run lint clean; tsc --noEmit clean for src/; browser-verified hotkeys, persistence, ticker, print PDF, both colourlines, mobile compact switcher. Screenshots qa-r2-01…qa-r2-final.png + qa-r2-print-v9.pdf in project root.
+
+Stage Summary:
+- Workspace state now survives reloads; full keyboard navigation; live engine ticker in the chrome; polished colourline cut-over; print/PDF output is a clean white A4 institutional report.
+- Notes for next round: (1) Turbopack dev serves CSS/JS chunks slightly stale right after edits — PDF/screenshot QA must reload twice / wait for compile before pixel-judging; (2) `agent-browser set media print` does not truly emulate print media (matchMedia stays false) — verify print via `agent-browser pdf` + pdftoppm pixel checks; (3) consider a second mini-service round: e.g. alert sound toggle persistence, CSV export of the ledger, or a desk-level "favourite" pin; (4) London feed reconnects on every theme flip by design (workspace remount) — acceptable.

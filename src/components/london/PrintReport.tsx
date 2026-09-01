@@ -84,7 +84,7 @@ export function PrintReport() {
   const alerts = getAlerts()
 
   return (
-    <div className="print-doc" aria-hidden>
+    <div className="print-doc" style={{ background: '#ffffff', color: '#111111', colorScheme: 'light' } as React.CSSProperties} aria-hidden>
       {/* classification banner */}
       <div className="pr-classbar">CLASSIFICATION: INTERNAL — RISK DESK USE ONLY · PAPER SIMULATION</div>
 

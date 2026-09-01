@@ -24,6 +24,7 @@ const HOTKEYS: Array<{ keys: string[]; action: string; tone: string }> = [
   { keys: ['2'], action: 'Track NQ ladder (E-mini Nasdaq 100)', tone: K.text },
   { keys: ['3'], action: 'Track SPY ladder (SPDR S&P 500 ETF)', tone: K.text },
   { keys: ['P'], action: 'Layout presets — workspace snapshots (global, every tab)', tone: K.violet },
+  { keys: ['J'], action: 'Session journal — desk-side logbook (global, every tab)', tone: K.violet },
   { keys: ['V'], action: 'Cut over the colourline — MK-II NAVY ↔ HFT MATRIX (global)', tone: K.violet },
 ]
 
@@ -45,9 +46,11 @@ const CONTROLS: Array<{ area: string; lines: string[] }> = [
     'Option tickets book straight into OPT P&L with agent post-mortem notes on |P&L| ≥ $150.',
   ] },
   { area: 'WORKSPACE (GLOBAL, EVERY TAB)', lines: [
-    'The 14-tab matrix — press L to return here, 1-9/0/Q/W/E to jump desks; ★ pins + P presets + V colourline work from anywhere, including this landing.',
-    '⌘K palette now carries NAVIGATE (all 14 tabs) and WORKSPACE (colourline cut-over, layout presets) alongside the desk verbs.',
-    'Layout presets capture the whole workspace (tab, sub-tabs, selections, pins) — rename/duplicate rows in the presets dialog; a demo MORNING BOOK preset is planted on first boot.',
+    'The 14-tab matrix — press L to return here, 1-9/0/Q/W/E to jump desks; ★ pins + P presets + J journal + V colourline work from anywhere, including this landing.',
+    '⌘K palette now carries NAVIGATE (all 14 tabs) and WORKSPACE (colourline cut-over, layout presets, session journal) alongside the desk verbs.',
+    'Layout presets capture the whole workspace (tab, sub-tabs, selections, pins) — rename/duplicate rows in the presets dialog; a demo MORNING BOOK preset is planted on first boot. The presets dialog also reorders the pinned quick rail with ↑/↓ (works on touch, no drag needed).',
+    'Session journal (J) — logbook rows persist in SQLite, stamp the active desk + regime + composite score, and export as CSV for the post-mortem.',
+    'Desk audio — the landing alarm toggle and the desks footer SFX chip both arm the sfx kernel: per-sentinel call signs (six distinct motifs) and a desk-pitched crisis klaxon.',
   ] },
   { area: 'EXECUTION & AUDIT (BOTTOM ROW)', lines: [
     'DESK ENGAGED toggles the agent reason/act loop; FLATTEN market-outs the open position.',

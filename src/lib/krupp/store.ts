@@ -26,6 +26,8 @@ import { create } from 'zustand';
 
 const WS_KEY = 'krupp-workspace';
 const PRESETS_KEY = 'krupp-presets';
+const SFX_KEY = 'krupp-sfx';
+const CLIENT_ID_KEY = 'krupp-client-id';
 const MAX_PRESETS = 12;
 const MAX_NAME = 24;
 
@@ -52,8 +54,14 @@ interface KruppState {
   favs: number[];
   /** named workspace layout snapshots ('krupp-presets', survives factory reset) */
   presets: Record<string, WorkspaceSnapshot>;
+  /** master sfx gate — desk alert chirps / crisis klaxon / regime siren
+   *  (persisted 'krupp-sfx'; the landing alarm toggle is the london store's
+   *  own soundOn — both read the SAME kernel gate via setSfxGate) */
+  sfxOn: boolean;
   /** shared UI slice — the presets dialog is reachable from every surface */
   presetsOpen: boolean;
+  /** shared UI slice — the session-journal dialog (J hotkey, ⌘K, rail chip) */
+  journalOpen: boolean;
   setActiveTab(t: number): void;
   setSubTab(desk: number, i: number): void;
   select(key: string, sym: string): void;
@@ -78,6 +86,12 @@ interface KruppState {
   duplicatePreset(name: string): PresetDuplicateResult;
   /** open/close the layout-presets dialog (global UI slice) */
   setPresetsOpen(v: boolean): void;
+  /** open/close the session-journal dialog (global UI slice) */
+  setJournalOpen(v: boolean): void;
+  /** flip the master sfx gate (persisted) */
+  toggleSfx(): void;
+  /** stable per-browser desk identity for journal rows ('krupp-client-id') */
+  clientId(): string;
   /** wipe all persisted workspace state (pins / sub-tabs / selections) and
    *  return to the LONDON EDGE landing tab — layout factory reset.
    *  Preserved: saved layout presets (separate storage key). */
@@ -156,6 +170,15 @@ function persistPresets(presets: Record<string, WorkspaceSnapshot>) {
   }
 }
 
+function hydrateSfx(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(SFX_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 const boot = loadWorkspace();
 const bootPresets = loadPresets();
 
@@ -190,8 +213,32 @@ export const useKrupp = create<KruppState>()((set, get) => ({
   selection: boot.selection,
   favs: boot.favs,
   presets: seedPresetsOnFirstBoot(),
+  sfxOn: hydrateSfx(),
   presetsOpen: false,
+  journalOpen: false,
   setPresetsOpen: (v) => set({ presetsOpen: v }),
+  setJournalOpen: (v) => set({ journalOpen: v }),
+  toggleSfx: () => {
+    const sfxOn = !get().sfxOn;
+    set({ sfxOn });
+    try {
+      window.localStorage.setItem(SFX_KEY, sfxOn ? '1' : '0');
+    } catch {
+      /* storage unavailable */
+    }
+  },
+  clientId: () => {
+    try {
+      let id = window.localStorage.getItem(CLIENT_ID_KEY);
+      if (!id) {
+        id = `desk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        window.localStorage.setItem(CLIENT_ID_KEY, id);
+      }
+      return id;
+    } catch {
+      return 'desk-anon';
+    }
+  },
   setActiveTab: (t) => {
     set({ activeTab: t });
     persistWorkspace(get());

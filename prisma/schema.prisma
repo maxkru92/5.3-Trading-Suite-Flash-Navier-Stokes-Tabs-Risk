@@ -75,6 +75,24 @@ model VolSnapshot {
   @@index([createdAt])
 }
 
+// KRUPP CAPITAL // SESSION JOURNAL — trader notes pinned to desk context
+// (active tab, regime, composite score at write time). The desk-side logbook:
+// observations survive reloads, feed the post-mortem workflow and are export-
+// able alongside the execution ledger.
+model JournalEntry {
+  id        String   @id @default(cuid())
+  clientId  String   // desk identity (persisted 'krupp-client-id', one per browser profile)
+  desk      Int      @default(0) // tab index at write time (0 = LONDON EDGE landing)
+  deskLabel String   @default("") // snapshot of the tab label (survives TABS re-ordering)
+  regime    String   @default("") // CALM | HIGH | CRISIS at write time
+  score     Float    @default(0) // composite risk score at write time
+  text      String // note body (1..400 chars, validated server-side)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([clientId])
+}
+
 // KRUPP CAPITAL // EXECUTION LEDGER — persisted paper fills (futures + options context tickets)
 // Blotter survives reloads; session aggregates (realized/fees/volume/blocks) rebuilt from this stream.
 model LedgerFill {

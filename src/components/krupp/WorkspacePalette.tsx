@@ -19,8 +19,8 @@ import {
   CommandItem, CommandList, CommandSeparator,
 } from '@/components/ui/command';
 import {
-  Bookmark, FileDown, Keyboard, Palette, RotateCcw, Square, Star,
-  TriangleAlert,
+  Bookmark, FileDown, Keyboard, NotebookPen, Palette, RotateCcw, Square, Star,
+  TriangleAlert, Volume2, VolumeX,
 } from 'lucide-react';
 import { useKrupp, useRevision } from '@/lib/krupp/store';
 import { useTheme, THEMES, KT } from '@/lib/theme';
@@ -42,15 +42,18 @@ export function WorkspacePalette({
   onOpenChange,
   onRequestHelp,
   onRequestPresets,
+  onRequestJournal,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onRequestHelp: () => void;
   onRequestPresets: () => void;
+  onRequestJournal: () => void;
 }) {
   useRevision(); // keeps the crisis group honest while the palette is open
   const theme = useTheme((s) => s.theme);
   const otherName = THEMES[theme === 'mk2' ? 'hft' : 'mk2'].name;
+  const sfxOn = useKrupp((s) => s.sfxOn);
 
   const run = (fn: () => void) => () => {
     fn();
@@ -122,6 +125,28 @@ export function WorkspacePalette({
             <Bookmark size={13} style={{ color: KT('accent') }} aria-hidden />
             Layout presets — save / load named snapshots
             <span className="ml-auto font-mono text-[9px] text-muted-foreground">P</span>
+          </CommandItem>
+          <CommandItem
+            value="session journal notes logbook log observation desk notebook"
+            onSelect={run(onRequestJournal)}
+            className="font-mono text-[11px]"
+          >
+            <NotebookPen size={13} style={{ color: KT('accent') }} aria-hidden />
+            Session journal — log a desk-side note
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground">J · stamps desk + regime</span>
+          </CommandItem>
+          <CommandItem
+            value="audio sfx sound mute alerts klaxon chirp volume alarm"
+            onSelect={run(() => useKrupp.getState().toggleSfx())}
+            className="font-mono text-[11px]"
+          >
+            {sfxOn ? (
+              <Volume2 size={13} style={{ color: KT('accent') }} aria-hidden />
+            ) : (
+              <VolumeX size={13} style={{ color: KT('warn') }} aria-hidden />
+            )}
+            Desk audio: {sfxOn ? 'ON — sentinel call signs + crisis klaxon' : 'OFF'}
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground">footer SFX chip</span>
           </CommandItem>
           <CommandItem
             value="workspace hotkey map help reference keyboard"

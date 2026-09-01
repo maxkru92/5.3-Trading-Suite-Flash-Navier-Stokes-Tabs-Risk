@@ -46,7 +46,9 @@ export const alertValues: Record<AlertKind, number> = { score: NaN, entropy: NaN
 
 // --- sinks (wired by useKruppFeed — keeps this module React-free) -----------
 let notifySink: ((title: string, desc: string, crit: boolean) => void) | null = null
-let sfxSink: ((kind: 'warn' | 'crit') => void) | null = null
+// sfx carries the ALERT KIND so the kernel can sound a per-kind call sign
+// (r9: six distinct motifs instead of one generic blip)
+let sfxSink: ((kind: 'warn' | 'crit', alertKind: AlertKind) => void) | null = null
 export function setAlertSinks(notify: typeof notifySink, sfx: typeof sfxSink) {
   notifySink = notify
   sfxSink = sfx
@@ -164,7 +166,7 @@ function trip(r: AlertRule, value: number): void {
     level: crit ? 'crit' : 'warn', message: msg,
   })
   notifySink?.(`ALERT — ${meta.label}`, `${r.op === '>' ? 'Above' : 'Below'} sentinel: ${value.toFixed(meta.step < 0.1 ? 3 : 2)} ${r.op} ${r.threshold}. Trip #${r.tripCount}.`, crit)
-  if (useKrupp.getState().soundOn) sfxSink?.(crit ? 'crit' : 'warn')
+  if (useKrupp.getState().soundOn) sfxSink?.(crit ? 'crit' : 'warn', r.kind)
   persist()
   // audit trail (SQLite) — fire-and-forget. dedupeKey is IDENTITY-based
   // (kind+op+threshold — stable across browser profiles), so when several

@@ -20,18 +20,26 @@ function hexA(hex: string, a: number): string {
 }
 
 function LondonClock() {
-  const [now, setNow] = useState<string>('')
+  const [t, setT] = useState<{ now: string; off: string }>({ now: '', off: 'UTC+0' })
   useEffect(() => {
+    // real London offset — label the clock honestly (BST summer = UTC+1)
+    const offFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', timeZoneName: 'shortOffset' })
     const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-    const tick = () => setNow(fmt.format(new Date()))
+    const tick = () => {
+      let off = 'UTC+0'
+      try {
+        off = (offFmt.formatToParts(new Date()).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+0').replace('GMT', 'UTC')
+      } catch { /* keep the fallback label */ }
+      setT({ now: fmt.format(new Date()), off })
+    }
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [])
   return (
     <div className="hidden xl:flex flex-col items-end leading-none gap-1">
-      <span className="text-[9px] tracking-[0.2em] text-muted-foreground">LONDON DESK · UTC+0</span>
-      <span className="text-sm font-bold tabular-nums text-glow-green" style={{ color: K.green }}>{now || '--:--:--'}</span>
+      <span className="text-[9px] tracking-[0.2em] text-muted-foreground">LONDON DESK · {t.off}</span>
+      <span className="text-sm font-bold tabular-nums text-glow-green" style={{ color: K.green }}>{t.now || '--:--:--'}</span>
     </div>
   )
 }
@@ -41,7 +49,7 @@ function AuthChip() {
   const authenticated = auth?.authenticated ?? false
   return (
     <div
-      className={`flex items-center gap-1.5 px-2 py-1 border rounded-sm min-w-[150px] max-w-[240px] xl:max-w-[300px] h-7 flex-[2] ${authenticated ? 'border-cyan-500/60 glow-box-cyan bg-cyan-950/20' : 'bg-orange-950/10'}`}
+      className={`flex items-center gap-1.5 px-2 py-1 border rounded-sm min-w-[130px] sm:min-w-[150px] max-w-[240px] min-[1360px]:max-w-[300px] h-7 flex-[2] ${authenticated ? 'border-cyan-500/60 glow-box-cyan bg-cyan-950/20' : 'bg-orange-950/10'}`}
       style={authenticated ? undefined : { borderColor: hexA(KT('warn'), 0.4) }}
       role="status"
       aria-live="polite"
@@ -157,7 +165,12 @@ export function SystemHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-gridline bg-kbg-deep/95 backdrop-blur-sm">
-      <div className="mx-auto max-w-[1800px] px-2.5 sm:px-4 py-2 flex flex-col xl:flex-row xl:items-center gap-2">
+      {/* r9 FIX — the row layout squeezed the middle block below its ~460px
+          min-content between 1280-1359px, so the auth chip painted OVER the
+          regime badge (and bled the document 6px at 390px). Stack below
+          1360px (where title+row+regime genuinely fit), clip the block as a
+          hard guard, and let the input/chip floors breathe on small screens. */}
+      <div className="mx-auto max-w-[1800px] px-2.5 sm:px-4 py-2 flex flex-col min-[1360px]:flex-row min-[1360px]:items-center gap-2">
         {/* Title banner */}
         <div className="flex items-center gap-2.5 min-w-0 shrink max-w-[360px]">
           <div className="w-8 h-8 border border-hft/50 glow-box-green grid place-items-center shrink-0" style={{ borderColor: hexA(KT('accent'), 0.5) }} aria-hidden>
@@ -178,8 +191,8 @@ export function SystemHeader() {
         </div>
 
         {/* Firebase token control */}
-        <div className="flex-1 flex flex-col xl:flex-row xl:items-center gap-1.5 xl:justify-center min-w-0 w-full xl:w-auto">
-          <div className="flex items-center gap-1.5 flex-1 min-h-[28px]">
+        <div className="flex-1 flex flex-col xl:flex-row xl:items-center gap-1.5 xl:justify-center min-w-0 w-full xl:w-auto overflow-hidden">
+          <div className="flex items-center gap-1.5 flex-1 min-h-[28px] min-w-0">
             <KeyRound size={13} className="text-muted-foreground shrink-0" aria-hidden />
             <Input
               type={show ? 'text' : 'password'}
@@ -187,7 +200,7 @@ export function SystemHeader() {
               onChange={(e) => setToken(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && connect()}
               placeholder="Firebase Bearer Token — paste or mint a desk credential"
-              className="h-7 text-[11px] bg-input/60 border-input font-mono rounded-sm min-w-[170px] max-w-xl flex-1 w-full"
+              className="h-7 text-[11px] bg-input/60 border-input font-mono rounded-sm min-w-0 sm:min-w-[150px] min-[1360px]:min-w-[170px] max-w-xl flex-1 w-full"
               aria-label="Firebase Bearer Token"
               spellCheck={false}
             />

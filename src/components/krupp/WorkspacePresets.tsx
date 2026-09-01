@@ -11,7 +11,7 @@
  */
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Bookmark, Check, Copy, Pencil, RotateCcw, Save, Star, TriangleAlert, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bookmark, Check, Copy, Pencil, RotateCcw, Save, Star, TriangleAlert, X } from 'lucide-react';
 import { useKrupp, type PresetSaveResult } from '@/lib/krupp/store';
 import { KT } from '@/lib/theme';
 import { TABS } from './tabs';
@@ -37,6 +37,7 @@ const STATUS_TONE: Record<PresetSaveResult, { msg: string; warn: boolean }> = {
 export function WorkspacePresets({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const presets = useKrupp((s) => s.presets);
   const activeTab = useKrupp((s) => s.activeTab);
+  const favs = useKrupp((s) => s.favs);
   const [name, setName] = useState('');
   const [status, setStatus] = useState<PresetSaveResult | null>(null);
   const [armedDelete, setArmedDelete] = useState<string | null>(null);
@@ -154,6 +155,67 @@ export function WorkspacePresets({ open, onOpenChange }: { open: boolean; onOpen
             </div>
           )}
         </div>
+
+        {/* ---- pinned quick rail (reorder on EVERY viewport — touch users
+             cannot drag the xl-only footer rail; these arrows drive the same
+             persisted moveFav order) ---- */}
+        {favs.length > 0 && (
+          <div className="border border-kborder bg-kbg-deep rounded-sm p-2">
+            <div className="text-[8px] tracking-[0.2em] text-muted-foreground mb-1.5">
+              PINNED QUICK RAIL — REORDER (SAME ORDER AS THE FOOTER RAIL)
+            </div>
+            <div className="flex flex-col gap-1">
+              {favs.map((tabIdx, pos) => {
+                const t = TABS[tabIdx];
+                const TIcon = t?.icon;
+                return (
+                  <div
+                    key={tabIdx}
+                    className={`flex items-center gap-2 rounded-sm border px-2 py-1 transition-colors ${
+                      tabIdx === activeTab ? 'border-kaccent/50 bg-kaccent/5' : 'border-kinset bg-kpanel/60'
+                    }`}
+                  >
+                    <span className="w-4 shrink-0 text-center font-mono text-[8.5px] text-muted-foreground" title={`Slot ${pos + 1}`}>
+                      {pos + 1}
+                    </span>
+                    {TIcon && <TIcon size={11} className={t.accent} aria-hidden />}
+                    <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] font-bold text-foreground">
+                      {t?.label ?? `TAB ${tabIdx}`}
+                      {tabIdx === activeTab && <span className="ml-1.5 font-normal text-muted-foreground">· ACTIVE</span>}
+                    </span>
+                    <button
+                      onClick={() => useKrupp.getState().setActiveTab(tabIdx)}
+                      title={`Jump to ${t?.label ?? 'desk'}`}
+                      aria-label={`Jump to ${t?.label ?? 'desk'}`}
+                      className="flex shrink-0 items-center rounded border border-kaccent/40 bg-kaccent/10 px-1.5 py-1 font-mono text-[8.5px] font-bold tracking-[0.1em] transition-colors hover:border-kaccent/80"
+                      style={{ color: KT('accent') }}
+                    >
+                      JUMP
+                    </button>
+                    <button
+                      onClick={() => pos > 0 && useKrupp.getState().moveFav(favs[pos], favs[pos - 1])}
+                      disabled={pos === 0}
+                      aria-label={`Move ${t?.label ?? 'desk'} up in the quick rail`}
+                      title={pos === 0 ? 'Already first' : 'Move up one slot'}
+                      className="flex shrink-0 items-center rounded border border-transparent p-1 text-muted-foreground transition-colors hover:border-kaccent/50 hover:text-foreground disabled:opacity-25 disabled:hover:border-transparent disabled:hover:text-muted-foreground"
+                    >
+                      <ArrowUp size={11} aria-hidden />
+                    </button>
+                    <button
+                      onClick={() => pos < favs.length - 1 && useKrupp.getState().moveFav(favs[pos], favs[pos + 1])}
+                      disabled={pos === favs.length - 1}
+                      aria-label={`Move ${t?.label ?? 'desk'} down in the quick rail`}
+                      title={pos === favs.length - 1 ? 'Already last' : 'Move down one slot'}
+                      className="flex shrink-0 items-center rounded border border-transparent p-1 text-muted-foreground transition-colors hover:border-kaccent/50 hover:text-foreground disabled:opacity-25 disabled:hover:border-transparent disabled:hover:text-muted-foreground"
+                    >
+                      <ArrowDown size={11} aria-hidden />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ---- saved presets ---- */}
         <div className="border border-kborder bg-kbg-deep rounded-sm p-2">

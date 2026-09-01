@@ -19,6 +19,7 @@ const WORKSPACE_KEYS: Array<{ keys: string[]; action: string; tone: keyof typeof
   { keys: ['Q', 'W', 'E'], action: 'Jump to desks 11–13 (CRYPTO / STAT-ARB / INFRA)', tone: 'text' },
   { keys: ['F'], action: 'Pin / unpin the active desk (★ persists)', tone: 'warn' },
   { keys: ['P'], action: 'Layout presets — save / load / rename / duplicate snapshots (works on the landing too)', tone: 'accent' },
+  { keys: ['J'], action: 'Session journal — desk-side logbook, notes stamp desk + regime + score (global)', tone: 'accent' },
   { keys: ['V'], action: 'Flip colourline — MK-II NAVY ↔ HFT MATRIX', tone: 'accent' },
   { keys: ['?'], action: 'This workspace reference card', tone: 'accent' },
   { keys: ['⌘', 'K'], action: 'Workspace command palette on the 13 desks (landing keeps its own)', tone: 'accent' },
@@ -40,9 +41,11 @@ const STEERING_LINES: string[] = [
   'SIMULATE MARKET LIQUIDITY CRASH (footer) injects a multi-stage liquidity cascade; the lockdown overlay, interceptor chain and auto-recovery countdown take over until the cycle decays.',
   'Interceptor chips — BLOCK MEAN REVERSION / REDUCE SIZE / EMERGENCY FLATTENING engage on a staged schedule once the cascade is live; click to arm or disarm manually.',
   'Colourline switch (header) re-renders every desk and chart against the other palette; the choice persists across reloads and the market engine never misses a tick during the cut-over.',
-  '★ pins persist per desk — hover a tab and click the star (or press F while the desk is active) to build your own quick-access rail in the footer; DRAG the rail chips to reorder them, the order is saved with the workspace.',
+  '★ pins persist per desk — hover a tab and click the star (or press F while the desk is active) to build your own quick-access rail in the footer; POINTER-DRAG the rail chips to reorder them (mouse, touch or pen — the chip tilts while held) or use the ↑/↓ rows in the presets dialog; the order is saved with the workspace.',
   'Layout presets (P) snapshot the WHOLE workspace — active tab, sub-tabs, instrument selections and pins — under a name; LOAD restores it in one click. Rows carry rename (pencil) and duplicate (copy) actions. Presets are stored separately, so the layout factory reset never destroys them — a demo MORNING BOOK preset is planted on first boot.',
-  'The LONDON EDGE landing keeps its own ⌘K palette — it now carries the full 14-tab NAVIGATE matrix plus a WORKSPACE group (colourline cut-over, layout presets), so every workspace surface is reachable from the landing as well.',
+  'Session journal (J) — the desk-side logbook: every note stamps the active tab, London-desk regime and composite score, persists in SQLite across reloads and exports as CSV. Log with ⌘⏎; strike a note with the two-step del button.',
+  'Desk audio — the SFX chip in the footer arms the sfx kernel: each of the six alert sentinels sounds its own two-note call sign, and the crisis klaxon is pitched per desk (METALS ≠ CRYPTO). The landing SystemHeader alarm toggle arms the same kernel.',
+  'The LONDON EDGE landing keeps its own ⌘K palette — it now carries the full 14-tab NAVIGATE matrix plus a WORKSPACE group (colourline cut-over, layout presets, session journal), so every workspace surface is reachable from the landing as well.',
 ];
 
 export function WorkspaceHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {

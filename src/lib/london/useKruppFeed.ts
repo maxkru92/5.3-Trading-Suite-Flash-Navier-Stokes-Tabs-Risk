@@ -19,6 +19,8 @@ import { pushTick, correlationMatrix, meanPairwiseRho } from './correlation'
 import {
   evaluateCboe, evaluateMetrics, evaluateRho, initAlerts, setAlertSinks,
 } from './alerts'
+import { setSfxGate, sfxAlert, sfxRegime } from '@/lib/krupp/sfx'
+import { useKrupp as useWorkspace } from '@/lib/krupp/store'
 import { hydrateVolHistory, persistVolSnapshot } from './volSync'
 import { getActiveProfileName, loadPolicy } from './policy'
 import type { LseStatus, RiskMetrics, Tick } from './types'
@@ -40,34 +42,9 @@ function getSocket(): Socket {
   return socket
 }
 
-let sirenCtx: AudioContext | null = null
-function playSiren(kind: 'crisis' | 'warn') {
-  try {
-    sirenCtx = sirenCtx ?? new (window.AudioContext || (window as any).webkitAudioContext)()
-    const ctx = sirenCtx
-    if (ctx.state === 'suspended') void ctx.resume()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.type = 'sawtooth'
-    const t0 = ctx.currentTime
-    if (kind === 'crisis') {
-      osc.frequency.setValueAtTime(620, t0)
-      osc.frequency.linearRampToValueAtTime(180, t0 + 0.42)
-      osc.frequency.linearRampToValueAtTime(620, t0 + 0.84)
-      gain.gain.setValueAtTime(0.001, t0)
-      gain.gain.exponentialRampToValueAtTime(0.14, t0 + 0.05)
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.15)
-      osc.start(t0); osc.stop(t0 + 1.2)
-    } else {
-      osc.frequency.setValueAtTime(440, t0)
-      gain.gain.setValueAtTime(0.001, t0)
-      gain.gain.exponentialRampToValueAtTime(0.07, t0 + 0.04)
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5)
-      osc.start(t0); osc.stop(t0 + 0.55)
-    }
-  } catch { /* audio unavailable */ }
-}
+// r9: the old inline playSiren moved into the shared kernel
+// (src/lib/krupp/sfx.ts) — regime sirens AND per-sentinel call signs now come
+// from one WebAudio voice that both terminals (landing + 13 desks) share.
 
 export function useKruppFeed() {
   const workerRef = useRef<Worker | null>(null)
@@ -98,12 +75,15 @@ export function useKruppFeed() {
     void hydrateVolHistory()
     const volCap = setInterval(persistVolSnapshot, 60_000)
 
-    // --- desk alerts engine: hydrate sentinels + wire toast/sfx sinks (round 8) ---
+    // --- desk alerts engine: hydrate sentinels + wire toast/sfx sinks (round 8/9) ---
     initAlerts()
     hydrateSound() // alarm toggle preference survives reloads (r3)
+    // kernel sfx gate: sound is ON when EITHER terminal's alarm switch is on
+    // (landing SystemHeader toggle ↔ desk footer toggle stay independent)
+    setSfxGate(() => useWorkspace.getState().sfxOn || useKrupp.getState().soundOn)
     setAlertSinks(
       (title, desc, crit) => toast({ title, description: desc, variant: crit ? 'destructive' : 'default', duration: 6000 }),
-      (kind) => playSiren(kind === 'crit' ? 'crisis' : 'warn'),
+      (kind, alertKind) => sfxAlert(alertKind, kind === 'crit'),
     )
     // ρ sentinel sampling (correlation cache updates at 1s)
     const rhoAlert = setInterval(() => {
@@ -161,10 +141,10 @@ export function useKruppFeed() {
         lastRegime.current = m.regime
         if (m.regime === 'CRISIS') {
           pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'crit', message: `COMPOSITE SCORE ${m.score.toFixed(1)} — CRITICAL SYSTEMIC CRISIS. MEAN REVERSION INTERCEPTED.` })
-          if (useKrupp.getState().soundOn) playSiren('crisis')
+          if (useKrupp.getState().soundOn) sfxRegime('crisis')
         } else if (m.regime === 'HIGH' && prev === 'CALM') {
           pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'warn', message: `Composite score ${m.score.toFixed(1)} — HIGH TOXICITY. Scaling offsets engaged.` })
-          if (useKrupp.getState().soundOn) playSiren('warn')
+          if (useKrupp.getState().soundOn) sfxRegime('warn')
         } else if (m.regime === 'CALM') {
           pushLog({ id: `${Date.now()}-r`, ts: Date.now(), source: 'RISK', level: 'info', message: `Composite score ${m.score.toFixed(1)} — STATE TENSOR NORMAL.` })
         }

@@ -13,10 +13,12 @@
  * against the new palette; module-scope engines keep running uninterrupted.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, SquareTerminal, TriangleAlert, ShieldCheck, Star } from 'lucide-react';
+import { Bookmark, NotebookPen, SquareTerminal, TriangleAlert, ShieldCheck, Star, Volume2, VolumeX } from 'lucide-react';
 import { bootstrapKrupp, ms, startCrisis, endCrisis } from '@/lib/krupp/engine';
 import { infra } from '@/lib/krupp/infraservice';
 import { useKrupp, useRevision } from '@/lib/krupp/store';
+import { useKrupp as useLondon } from '@/lib/london/store';
+import { setSfxGate, sfxDesk } from '@/lib/krupp/sfx';
 import { fClock, fCountdown, fN, fPx, fPct } from '@/lib/krupp/format';
 import { hydrateTheme, useTheme, THEMES } from '@/lib/theme';
 import { ThemeSwitcher } from './ThemeSwitcher';
@@ -24,6 +26,7 @@ import { CrisisOverlay } from './CrisisOverlay';
 import { WorkspaceHelp } from './WorkspaceHelp';
 import { WorkspacePalette } from './WorkspacePalette';
 import { WorkspacePresets } from './WorkspacePresets';
+import { WorkspaceJournal } from './WorkspaceJournal';
 import { TABS } from './tabs';
 
 function UtcClock(): React.ReactElement {
@@ -109,6 +112,8 @@ export default function Shell() {
   useEffect(() => {
     hydrateTheme();
     bootstrapKrupp();
+    // sfx kernel gate — sound is on when EITHER terminal's alarm switch is on
+    setSfxGate(() => useKrupp.getState().sfxOn || useLondon.getState().soundOn);
     setMounted(true);
   }, []);
 
@@ -117,8 +122,16 @@ export default function Shell() {
   const setActiveTab = useKrupp((s) => s.setActiveTab);
   const favs = useKrupp((s) => s.favs);
   const toggleFav = useKrupp((s) => s.toggleFav);
-  const moveFav = useKrupp((s) => s.moveFav);
+  const sfxOn = useKrupp((s) => s.sfxOn);
+  const journalOpen = useKrupp((s) => s.journalOpen);
+  const setJournalOpen = useKrupp((s) => s.setJournalOpen);
+  /* r9 — POINTER drag-to-reorder for the pinned quick rail: pointer events
+   * (not HTML5 DnD) so mouse, touch AND pen all reorder; live moveFav swaps
+   * as the pointer crosses a neighbouring chip. Click-after-drag is folded
+   * back into a plain jump via the didDrag guard. */
   const [dragFav, setDragFav] = useState<number | null>(null);
+  const dragFavRef = useRef<number | null>(null);
+  const didDragRef = useRef(false);
   useRevision(); // 5 Hz re-render of status surfaces
 
   /* ---- colourline cut-over flash (rendered OUTSIDE the keyed workspace) ---- */
@@ -132,11 +145,11 @@ export default function Shell() {
   }, [theme]);
 
   /* ---- desk hotkeys: L landing · 1-9/0 desks 01-10 · Q/W/E desks 11-13 ·
-         F pin/unpin active desk · P layout presets (anywhere) · V colourline ·
-         ? workspace map · ⌘K palette
+         F pin/unpin active desk · P layout presets (anywhere) · J session
+         journal (anywhere) · V colourline · ? workspace map · ⌘K palette
          (the LONDON EDGE tab routes plain 1/2/3/C/R/T + ? + ⌘K to its own
          terminal: 1/2/3 symbols, C crash, R reset, T engage, ? HotkeyHelp,
-         ⌘K desk palette — P and V stay workspace-global) ---- */
+         ⌘K desk palette — P, J and V stay workspace-global) ---- */
   const [helpOpen, setHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const presetsOpen = useKrupp((s) => s.presetsOpen);
@@ -171,6 +184,11 @@ export default function Shell() {
         setPresetsOpen(!useKrupp.getState().presetsOpen);
         return;
       }
+      if (e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setJournalOpen(!useKrupp.getState().journalOpen);
+        return;
+      }
       if (activeTab === 0) return; // landing terminal owns plain keys + ?
       if (e.key === '?') {
         e.preventDefault();
@@ -189,7 +207,7 @@ export default function Shell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeTab, setActiveTab, toggleFav, setPresetsOpen]);
+  }, [activeTab, setActiveTab, toggleFav, setPresetsOpen, setJournalOpen]);
 
   if (!mounted) {
     return (
@@ -230,12 +248,14 @@ export default function Shell() {
       <CrisisOverlay />
       <WorkspaceHelp open={helpOpen} onOpenChange={setHelpOpen} />
       <WorkspacePresets open={presetsOpen} onOpenChange={setPresetsOpen} />
+      <WorkspaceJournal open={journalOpen} onOpenChange={setJournalOpen} />
       {tab.deskNo !== undefined && (
         <WorkspacePalette
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
           onRequestHelp={() => setHelpOpen(true)}
           onRequestPresets={() => setPresetsOpen(true)}
+          onRequestJournal={() => setJournalOpen(true)}
         />
       )}
 
@@ -359,6 +379,14 @@ export default function Shell() {
             >
               <Bookmark size={12} aria-hidden />
             </button>
+            <button
+              onClick={() => setJournalOpen(!journalOpen)}
+              title="Session journal (J) — desk-side logbook, notes stamp desk + regime + score"
+              aria-label="Open session journal"
+              className="rounded border border-kborder2 bg-kpanel p-1 text-zinc-400 outline-none transition-colors hover:border-kaccent/60 hover:text-kaccent focus-visible:ring-1 focus-visible:ring-kaccent/70"
+            >
+              <NotebookPen size={12} aria-hidden />
+            </button>
           </span>
         </div>
         <Active />
@@ -370,7 +398,10 @@ export default function Shell() {
           {crisis.active ? (
             <>
               <button
-                onClick={endCrisis}
+                onClick={() => {
+                  endCrisis();
+                  sfxDesk(useKrupp.getState().activeTab, 'recover');
+                }}
                 className="crisis-blink flex items-center gap-2 rounded border border-rose-500 bg-rose-950/70 px-4 py-2 font-mono text-[11px] font-black tracking-[0.2em] text-rose-200 shadow-[0_0_24px_rgba(225,29,72,0.35)]"
               >
                 <TriangleAlert size={14} />
@@ -383,7 +414,10 @@ export default function Shell() {
             </>
           ) : (
             <button
-              onClick={startCrisis}
+              onClick={() => {
+                startCrisis();
+                sfxDesk(useKrupp.getState().activeTab, 'crisis');
+              }}
               className="flex items-center gap-2 rounded border border-rose-700/80 bg-gradient-to-b from-kcrit-deep to-kcrit-black px-4 py-2 font-mono text-[11px] font-black tracking-[0.2em] text-rose-300 transition-all hover:border-rose-500 hover:shadow-[0_0_24px_rgba(225,29,72,0.3)] active:scale-[0.98]"
             >
               <TriangleAlert size={14} />
@@ -392,6 +426,19 @@ export default function Shell() {
           )}
 
           <div className="ml-auto flex w-full flex-wrap items-center justify-center gap-1.5 sm:w-auto sm:justify-end">
+            {/* master sfx gate — desk crisis klaxon + all workspace chirps;
+                the landing SystemHeader alarm toggle flips the same kernel */}
+            <button
+              onClick={() => useKrupp.getState().toggleSfx()}
+              aria-pressed={sfxOn}
+              title={sfxOn ? 'Mute desk audio (alerts, crisis klaxon)' : 'Enable desk audio — per-sentinel call signs + crisis klaxon'}
+              className={`flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[9.5px] font-semibold uppercase tracking-wider transition-colors ${
+                sfxOn ? 'border-kaccent/60 bg-kaccent/10' : 'border-kborder2 bg-kpanel text-zinc-500'
+              }`}
+            >
+              {sfxOn ? <Volume2 size={13} className="text-kaccent" aria-hidden /> : <VolumeX size={13} aria-hidden />}
+              SFX
+            </button>
             <InterceptorChip
               name="Block Mean Reversion"
               engaged={engaging(400) && ms.interceptors.blockMR}
@@ -434,6 +481,13 @@ export default function Shell() {
               >
                 <kbd className="kbd-hint">P</kbd> PRESETS
               </button>
+              <button
+                onClick={() => setJournalOpen(true)}
+                title="Session journal — desk-side logbook (⌘⏎ to log, CSV export inside)"
+                className="flex items-center gap-1 rounded-sm outline-none transition-transform hover:scale-105 focus-visible:ring-1 focus-visible:ring-kaccent/70"
+              >
+                <kbd className="kbd-hint">J</kbd> JOURNAL
+              </button>
               <kbd className="kbd-hint">V</kbd> COLOURLINE
               {activeTab !== 0 && (
                 <>
@@ -454,7 +508,8 @@ export default function Shell() {
                 </>
               )}
             </span>
-            {/* pinned-desk quick rail — click to jump, DRAG to reorder */}
+            {/* pinned-desk quick rail — click to jump, POINTER-DRAG to reorder
+                (mouse + touch + pen — pointer capture, live moveFav swaps) */}
             {favs.length > 0 && (
               <span className="hidden items-center gap-1 xl:flex" aria-label="Pinned desks">
                 <span className="h-2.5 w-px bg-kborder2" aria-hidden />
@@ -462,27 +517,50 @@ export default function Shell() {
                 {favs.map((i, pos) => (
                   <button
                     key={i}
-                    onClick={() => setActiveTab(i)}
-                    draggable
-                    onDragStart={(e) => {
+                    data-fav-tab={i}
+                    onPointerDown={(e) => {
+                      if (e.pointerType === 'mouse' && e.button !== 0) return;
+                      dragFavRef.current = i;
+                      didDragRef.current = false;
                       setDragFav(i);
-                      e.dataTransfer.effectAllowed = 'move';
-                      e.dataTransfer.setData('text/plain', String(i));
+                      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* capture unavailable */ }
                     }}
-                    onDragOver={(e) => {
-                      if (dragFav !== null && dragFav !== i) e.preventDefault();
+                    onPointerMove={(e) => {
+                      if (dragFavRef.current === null) return;
+                      const chip = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-fav-tab]') as HTMLElement | null;
+                      if (!chip) return;
+                      const target = Number(chip.dataset.favTab);
+                      const cur = dragFavRef.current;
+                      if (Number.isInteger(target) && target !== cur && favs.includes(target)) {
+                        didDragRef.current = true;
+                        useKrupp.getState().moveFav(cur, target);
+                        dragFavRef.current = target;
+                        setDragFav(target);
+                      }
                     }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                      if (!Number.isNaN(from) && from !== i) moveFav(from, i);
+                    onPointerUp={(e) => {
+                      if (dragFavRef.current !== null) {
+                        try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* already released */ }
+                        dragFavRef.current = null;
+                        setDragFav(null);
+                        // the click that follows a real drag is swallowed by
+                        // didDragRef — clear the guard on the NEXT tick so
+                        // keyboard activation still jumps
+                        setTimeout(() => { didDragRef.current = false; }, 0);
+                      }
+                    }}
+                    onPointerCancel={() => {
+                      dragFavRef.current = null;
                       setDragFav(null);
                     }}
-                    onDragEnd={() => setDragFav(null)}
+                    onClick={() => {
+                      if (didDragRef.current) return; // a drag, not a jump
+                      setActiveTab(i);
+                    }}
                     title={`Jump to desk ${String(i).padStart(2, '0')} — ${TABS[i]?.label ?? ''} · drag to reorder (slot ${pos + 1})`}
-                    className={`cursor-grab rounded-sm border px-1 font-mono text-[8.5px] font-bold tracking-wider outline-none transition-all focus-visible:ring-1 focus-visible:ring-kaccent/70 active:cursor-grabbing ${
+                    className={`cursor-grab touch-none select-none rounded-sm border px-1 font-mono text-[8.5px] font-bold tracking-wider outline-none transition-all focus-visible:ring-1 focus-visible:ring-kaccent/70 active:cursor-grabbing ${
                       dragFav === i
-                        ? 'scale-110 border-amber-300 bg-amber-400/25 text-amber-100 shadow-[0_0_10px_rgba(252,211,77,0.5)]'
+                        ? 'scale-110 rotate-2 border-amber-300 bg-amber-400/25 text-amber-100 shadow-[0_0_12px_rgba(252,211,77,0.55)]'
                         : i === activeTab
                           ? 'border-amber-400/80 bg-amber-400/15 text-amber-200'
                           : 'border-amber-400/25 bg-amber-400/5 text-amber-300/70 hover:border-amber-400/60 hover:text-amber-200'

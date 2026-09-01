@@ -7,7 +7,7 @@
 
 import { useEffect } from 'react'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
-import { AlertOctagon, Bell, BellRing, Bookmark, Crosshair, Eraser, FileDown, FileText, FolderDown, Keyboard, KeyRound, Palette, Play, Printer, Radio, RotateCcw, ShieldHalf, Skull, Sparkles, Square, Star, Volume2, VolumeX } from 'lucide-react'
+import { AlertOctagon, Bell, BellRing, Bookmark, Crosshair, Eraser, FileDown, FileText, FolderDown, Keyboard, KeyRound, NotebookPen, Palette, Play, Printer, Radio, RotateCcw, ShieldHalf, Skull, Sparkles, Square, Star, Volume2, VolumeX } from 'lucide-react'
 import { useKrupp } from '@/lib/london/store'
 import { useKruppApi } from '@/lib/london/context'
 import { ledger } from '@/lib/london/execution'
@@ -158,6 +158,20 @@ export function CommandPalette() {
             <Bookmark size={13} style={{ color: KT('accent') }} />
             Layout presets — save / load snapshots
             <span className="ml-auto text-muted-foreground text-[9px]">hotkey P</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={run(() => {
+              useWorkspace.getState().setJournalOpen(true)
+              useKrupp.getState().pushLog({
+                id: `jr-${Date.now()}`, ts: Date.now(), source: 'SYSTEM', level: 'info',
+                message: 'Session journal opened — notes stamp desk + regime + score.',
+              })
+            })}
+            className="font-mono text-[11px]"
+          >
+            <NotebookPen size={13} style={{ color: KT('accent') }} />
+            Session journal — log a desk-side note
+            <span className="ml-auto text-muted-foreground text-[9px]">hotkey J</span>
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />

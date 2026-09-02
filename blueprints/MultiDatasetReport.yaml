@@ -1,0 +1,387 @@
+# ============================================================================
+# KRUPP CAPITAL // BLUEPRINT: MULTI-DATASET ANALYTICS REPORT
+# Version: 1.0
+# Purpose: Second print/download function for comprehensive quant analysis table
+# ============================================================================
+
+name: multi-dataset-analytics-report
+version: "1.0"
+description: |
+  Comprehensive multi-dataset report combining all critical financial data
+  from the entire Krupp Capital platform into a single analysis-ready table.
+  Includes FRED liquidity data, desk metrics, risk parameters, and market data.
+
+# ============================================================================
+# DATA SOURCES - All Integration Points
+# ============================================================================
+data_sources:
+
+  # 1. FRED Liquidity Data (External API)
+  fred_liquidity:
+    endpoint: "/api/fred/liquidity"
+    refresh: "5min"
+    fields:
+      - TED_SPREAD: "3M TED Spread"
+      - LIBOR_OIS_SPREAD: "LIBOR-OIS Spread"
+      - COMMERCIAL_PAPER: "Commercial Paper Rate"
+      - TIPS_YIELD: "TIPS Yield"
+      - HIGH_YIELD_SPREAD: "HY Corporate Spread"
+      - VIX: "CBOE Volatility Index"
+      - MOVE_INDEX: "ICE BofA MOVE Index"
+
+  # 2. Desk Store (london/store.ts)
+  desk_metrics:
+    store: "useKrupp"
+    selector: "metrics"
+    fields:
+      - hawkes: "Hawkes Parameter (lambda)"
+      - toxZ: "Toxicity Z-Score"
+      - viscosity: "Market Viscosity"
+      - viscRatio: "Viscosity Ratio"
+      - jerk: "Jerk (3rd derivative)"
+      - jerkZ: "Jerk Z-Score"
+      - entropy: "Entropy"
+      - score: "Risk Score"
+      - regime: "Market Regime"
+      - shock: "Shock Flag"
+
+  # 3. Risk Policy (london/policy.ts)
+  risk_policy:
+    store: "useKrupp"
+    selector: "policy"
+    fields:
+      - lockChaos: "LOCK Threshold"
+      - scaleVisc: "SCALE Threshold"
+      - killScore: "KILL Threshold"
+
+  # 4. CBOE Data (cboeSnapshot)
+  cboe_data:
+    store: "useKrupp"
+    selector: "cboe"
+    fields:
+      - vix: "VIX"
+      - vxv: "VXV"
+      - pcRatio: "P-C Ratio"
+      - vixHist: "VIX History (20)"
+
+  # 5. Position & P&L (execution ledger)
+  execution:
+    store: "useKrupp"
+    selector: "pos,realized,unrealized,volume,fees"
+    fields:
+      - position: "Current Position"
+      - realizedPnL: "Realized P&L"
+      - unrealizedPnL: "Unrealized P&L"
+      - volume: "Volume"
+      - fees: "Fees"
+      - hitRate: "Hit Rate"
+
+  # 6. Options Desk
+  options_desk:
+    store: "useKrupp"
+    selector: "optTickets,optRealized,optFees,optUnrealized"
+    fields:
+      - openTickets: "Open Options"
+      - optRealized: "Options Realized"
+      - optFees: "Options Fees"
+      - optUnrealized: "Options Unrealized"
+
+  # 7. Volatility History (volHistory)
+  vol_history:
+    store: "useKrupp"
+    selector: "volHistory"
+    fields:
+      - ivSurface: "IV Surface Snapshot"
+      - volTrend: "Volatility Trend"
+
+  # 8. 13-Desk Overview
+  desk_overview:
+    component: "DeskFrame"
+    desks:
+      - id: 1
+        name: "Volatility"
+        metrics: ["iv", "skew", "term_structure"]
+      - id: 2
+        name: "Options"
+        metrics: ["iv_hv_spread", "rr_skew", "bf_spread"]
+      - id: 3
+        name: "Index Futures"
+        metrics: ["basis", "roll_yield", "convenience_yield"]
+      - id: 4
+        name: "Bonds"
+        metrics: ["yield_curve", "duration", "convexity"]
+      - id: 5
+        name: "Metals"
+        metrics: ["gold_silver_ratio", "copper_zscore", "ptd_near"]
+      - id: 6
+        name: "Energies"
+        metrics: ["crack_spread", "calendar_spread", "storage_level"]
+      - id: 7
+        name: "FX"
+        metrics: ["dm_eme_correl", "carry_roll", "vol_surface"]
+      - id: 8
+        name: "Stocks"
+        metrics: ["beta", "alpha", "momentum"]
+      - id: 9
+        name: "ETF"
+        metrics: ["creation_redemption", "aum_flow", "tracking_error"]
+      - id: 10
+        name: "Liquidity"
+        metrics: ["bid_ask_spread", "market_depth", "impact_cost"]
+      - id: 11
+        name: "Crypto"
+        metrics: ["funding_rate", "open_interest", "exchange_flow"]
+      - id: 12
+        name: "Stat Arb"
+        metrics: ["pair_correl", "half_life", "hedge_ratio"]
+      - id: 13
+        name: "Infra"
+        metrics: ["latency", "throughput", "uptime"]
+
+  # 9. Correlation Matrix
+  correlation:
+    function: "correlationMatrix()"
+    output: "3x3 correlation matrix"
+    fields:
+      - "ES-SPY correlation"
+      - "ES-GLD correlation"
+      - "SPY-GLD correlation"
+
+  # 10. Agent & Session Data
+  agent_session:
+    store: "useKrupp"
+    selectors:
+      - "engaged"
+      - "agentStatus"
+      - "lastAgentNote"
+      - "deskSessions"
+    fields:
+      - agentMode: "Agent Status"
+      - sessions: "Total Sessions"
+      - avgSessionLength: "Avg Session Duration"
+
+# ============================================================================
+# OUTPUT FORMATS
+# ============================================================================
+output_formats:
+  - type: "CSV"
+    filename: "krupp_analytics_{date}_{time}.csv"
+    delimiter: ","
+    quote_char: '"'
+    decimal: "."
+
+  - type: "EXCEL"
+    filename: "krupp_analytics_{date}_{time}.xlsx"
+    sheets:
+      - name: "FRED Liquidity"
+      - name: "Desk Metrics"
+      - name: "Risk Policy"
+      - name: "Execution"
+      - name: "Options"
+      - name: "13-Desk Overview"
+      - name: "Correlation"
+
+  - type: "JSON"
+    filename: "krupp_analytics_{date}_{time}.json"
+    pretty: true
+
+  - type: "HTML"
+    filename: "krupp_analytics_{date}_{time}.html"
+    template: "analysis_report"
+    styles: "print-ready"
+
+# ============================================================================
+# TABLE SCHEMA - Multi-Dataset Consolidated Table
+# ============================================================================
+table_schema:
+  sections:
+    - header: "FRED LIQUIDITY METRICS"
+      columns:
+        - name: "Indicator"
+          width: 30
+          align: "left"
+        - name: "Value"
+          width: 15
+          align: "right"
+        - name: "Change"
+          width: 12
+          align: "right"
+        - name: "Status"
+          width: 10
+          align: "center"
+        - name: "Timestamp"
+          width: 20
+          align: "right"
+
+    - header: "RISK METRICS"
+      columns:
+        - name: "Metric"
+          width: 25
+          align: "left"
+        - name: "Current"
+          width: 12
+          align: "right"
+        - name: "Z-Score"
+          width: 10
+          align: "right"
+        - name: "Threshold"
+          width: 10
+          align: "right"
+        - name: "Flag"
+          width: 8
+          align: "center"
+
+    - header: "EXECUTION SUMMARY"
+      columns:
+        - name: "Symbol"
+          width: 10
+          align: "left"
+        - name: "Position"
+          width: 10
+          align: "right"
+        - name: "Avg Price"
+          width: 12
+          align: "right"
+        - name: "Realized P&L"
+          width: 15
+          align: "right"
+        - name: "Unrealized P&L"
+          width: 15
+          align: "right"
+        - name: "Volume"
+          width: 10
+          align: "right"
+        - name: "Fees"
+          width: 10
+          align: "right"
+
+    - header: "OPTIONS DESK"
+      columns:
+        - name: "Ticket"
+          width: 25
+          align: "left"
+        - name: "Status"
+          width: 10
+          align: "center"
+        - name: "Entry"
+          width: 10
+          align: "right"
+        - name: "Entry IV"
+          width: 10
+          align: "right"
+        - name: "Current"
+          width: 10
+          align: "right"
+        - name: "P&L"
+          width: 12
+          align: "right"
+
+    - header: "13-DESK OVERVIEW"
+      columns:
+        - name: "Desk"
+          width: 15
+          align: "left"
+        - name: "Primary Metric"
+          width: 15
+          align: "right"
+        - name: "Value"
+          width: 12
+          align: "right"
+        - name: "Status"
+          width: 10
+          align: "center"
+        - name: "Alerts"
+          width: 10
+          align: "center"
+
+    - header: "CORRELATION MATRIX"
+      columns:
+        - name: ""
+          width: 12
+          align: "center"
+        - name: "ES"
+          width: 12
+          align: "center"
+        - name: "SPY"
+          width: 12
+          align: "center"
+        - name: "GLD"
+          width: 12
+          align: "center"
+
+# ============================================================================
+# UI COMPONENT INTEGRATION
+# ============================================================================
+ui_integration:
+  button_location:
+    - "SystemHeader (top bar)"
+    - "WorkspacePalette (L hotkey)"
+    - "DeskFrame (per-desk)"
+
+  button_style:
+    icon: "FileSpreadsheet"
+    label: "Analytics Export"
+    tooltip: "Export comprehensive multi-dataset analysis table"
+
+  dropdown_options:
+    - format: "CSV"
+      description: "Comma-separated values for Excel/Sheets"
+    - format: "EXCEL"
+      description: "Multi-sheet workbook with formatting"
+    - format: "JSON"
+      description: "Raw data for programmatic access"
+    - format: "HTML"
+      description: "Print-ready formatted report"
+
+# ============================================================================
+# API ENDPOINTS
+# ============================================================================
+api_endpoints:
+  - path: "/api/export/analytics"
+    method: "GET"
+    params:
+      - name: "format"
+        type: "string"
+        enum: ["csv", "xlsx", "json", "html"]
+        default: "csv"
+      - name: "include_fred"
+        type: "boolean"
+        default: true
+      - name: "include_desks"
+        type: "boolean"
+        default: true
+      - name: "date_range"
+        type: "string"
+        default: "today"
+    response:
+      content_type: "application/octet-stream"
+      headers:
+        - "Content-Disposition: attachment; filename=krupp_analytics_{date}.{ext}"
+
+  - path: "/api/export/fred-live"
+    method: "GET"
+    description: "Fetch live FRED data for report"
+
+  - path: "/api/export/correlation"
+    method: "GET"
+    description: "Generate current correlation matrix"
+
+# ============================================================================
+# IMPLEMENTATION NOTES
+# ============================================================================
+implementation:
+  dependencies:
+    - "xlsx (Excel generation)"
+    - "file-saver (download trigger)"
+    - "date-fns (formatting)"
+
+  performance:
+    - "FRED data: cache 5 min, background refresh"
+    - "Desk metrics: real-time from store"
+    - "Correlation: compute on-demand"
+    - "Large exports: streaming response"
+
+  error_handling:
+    - "FRED API failure: show cached data with timestamp"
+    - "Store access: fallback to defaults"
+    - "Export failure: toast notification with retry"

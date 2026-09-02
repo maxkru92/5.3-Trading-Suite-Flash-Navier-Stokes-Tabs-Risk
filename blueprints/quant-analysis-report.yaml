@@ -1,0 +1,462 @@
+# ============================================================================
+# KRUPP CAPITAL — QUANT ANALYSIS REPORT BLUEPRINT
+# Second Print/Download Function: Multi-Dataset Consolidated Table
+# ============================================================================
+# Purpose: Export a perfectly formatted, analysis-ready table combining ALL
+#          datasets from the quant finance dashboard into CSV/Excel/HTML.
+# Data Sources: FRED Liquidity, CBOE Vol, Risk Metrics, Ledger, Options,
+#               Vol History, Journal, Market State, Policy.
+# ============================================================================
+
+name: quant-analysis-report
+version: "1.0.0"
+description: |
+  Consolidated quant analysis report combining FRED liquidity, volatility,
+  execution ledger, options desk, risk metrics, and market state into
+  analysis-ready formats (CSV, Excel, HTML).
+schema: blueprint/1
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+output:
+  formats: [csv, excel, html]
+  default_format: csv
+  filename_prefix: "krupp-quant-analysis"
+  timestamp_format: "iso"
+  encoding: "utf-8"
+
+# ============================================================================
+# TABLE SCHEMA DEFINITION
+# ============================================================================
+tables:
+  # --------------------------------------------------------------------------
+  # Table 1: FRED Liquidity Data (Net Liquidity Proxy, Central Bank BS)
+  # --------------------------------------------------------------------------
+  liquidity:
+    title: "Central Bank Liquidity (FRED)"
+    source: "liquidityService"
+    description: "Fed/ECB/BOJ balance sheets, TGA, RRP, Net Liquidity Proxy"
+    columns:
+      - { name: timestamp, type: datetime, format: iso8601, header: "Timestamp (UTC)" }
+      - { name: fed_bs, type: float, format: "$,.0f", header: "Fed BS ($B)", source: "liquidity.fed" }
+      - { name: ecb_bs, type: float, format: "$,.0f", header: "ECB BS ($B)", source: "liquidity.ecb" }
+      - { name: boj_bs, type: float, format: "$,.0f", header: "BOJ BS ($B)", source: "liquidity.boj" }
+      - { name: tga, type: float, format: "$,.0f", header: "TGA ($B)", source: "liquidity.tga" }
+      - { name: rrp, type: float, format: "$,.0f", header: "RRP ($B)", source: "liquidity.rrp" }
+      - { name: net_liquidity, type: float, format: "$,.0f", header: "Net Liq ($B)", formula: "fed_bs - (tga + rrp)" }
+      - { name: net_liquidity_change_1h, type: float, format: "$,.1f", header: "Net Liq Δ1H" }
+      - { name: fed_change_1h, type: float, format: "+$,.1f;-$,.1f", header: "Fed Δ1H" }
+      - { name: rrp_change_1h, type: float, format: "+$,.1f;-$,.1f", header: "RRP Δ1H" }
+
+  # --------------------------------------------------------------------------
+  # Table 2: Volatility Complex (CBOE VIX term structure)
+  # --------------------------------------------------------------------------
+  volatility:
+    title: "Volatility Complex (CBOE)"
+    source: "cboeSnapshot"
+    description: "VIX term structure, contango, put-call ratio, skew"
+    columns:
+      - { name: timestamp, type: datetime, format: iso8601, header: "Timestamp (UTC)" }
+      - { name: vix, type: float, format: ".2f", header: "VIX", source: "cboe.vix" }
+      - { name: vix9d, type: float, format: ".2f", header: "VIX 9D", source: "cboe.vix9d" }
+      - { name: vix3m, type: float, format: ".2f", header: "VIX 3M", source: "cboe.vix3m" }
+      - { name: vix6m, type: float, format: ".2f", header: "VIX 6M", source: "cboe.vix6m" }
+      - { name: vix1y, type: float, format: ".2f", header: "VIX 1Y", source: "cboe.vix1y" }
+      - { name: contango_pct, type: float, format: ".2f%", header: "Contango %", source: "cboe.contangoPct" }
+      - { name: pc_ratio, type: float, format: ".3f", header: "P/C Ratio", source: "cboe.pcRatio" }
+      - { name: skew, type: float, format: ".2f", header: "Skew", source: "cboe.skew" }
+      - { name: vvix, type: float, format: ".2f", header: "VVIX", source: "cboe.vvix" }
+      - { name: call_volume, type: integer, format: ",.0f", header: "Call Vol", source: "cboe.callVol" }
+      - { name: put_volume, type: integer, format: ",.0f", header: "Put Vol", source: "cboe.putVol" }
+      - { name: call_oi, type: integer, format: ",.0f", header: "Call OI", source: "cboe.callOI" }
+      - { name: put_oi, type: integer, format: ",.0f", header: "Put OI", source: "cboe.putOI" }
+
+  # --------------------------------------------------------------------------
+  # Table 3: Risk Metrics (Hawkes, Viscosity, Entropy, Regime)
+  # --------------------------------------------------------------------------
+  risk_metrics:
+    title: "Risk Metrics"
+    source: "riskMetrics"
+    description: "Hawkes process, viscosity, entropy, regime classification"
+    columns:
+      - { name: timestamp, type: datetime, format: iso8601, header: "Timestamp (UTC)" }
+      - { name: regime, type: string, header: "Regime", source: "metrics.regime" }
+      - { name: score, type: float, format: ".1f", header: "Risk Score", source: "metrics.score" }
+      - { name: hawkes, type: float, format: ".4f", header: "Hawkes", source: "metrics.hawkes" }
+      - { name: viscosity, type: float, format: ".4f", header: "Viscosity", source: "metrics.viscosity" }
+      - { name: visc_ratio, type: float, format: ".3f", header: "Visc Ratio", source: "metrics.viscRatio" }
+      - { name: jerk, type: float, format: ".4f", header: "Jerk", source: "metrics.jerk" }
+      - { name: jerk_z, type: float, format: ".2f", header: "Jerk Z", source: "metrics.jerkZ" }
+      - { name: tox_z, type: float, format: ".2f", header: "Tox Z", source: "metrics.toxZ" }
+      - { name: entropy, type: float, format: ".4f", header: "Entropy", source: "metrics.entropy" }
+      - { name: shock, type: boolean, format: "YES;NO", header: "Shock", source: "metrics.shock" }
+      - { name: lock_active, type: boolean, format: "ACTIVE;STANDBY", header: "Lock", source: "metrics.interceptors.lock" }
+      - { name: scale_active, type: boolean, format: "ACTIVE;STANDBY", header: "Scale", source: "metrics.interceptors.scale" }
+      - { name: kill_active, type: boolean, format: "ACTIVE;STANDBY", header: "Kill", source: "metrics.interceptors.kill" }
+
+  # --------------------------------------------------------------------------
+  # Table 4: Execution Ledger (Fills, Blocks, P&L)
+  # --------------------------------------------------------------------------
+  execution_ledger:
+    title: "Execution Ledger"
+    source: "ledger"
+    description: "Paper fills, blocks, P&L with slippage"
+    columns:
+      - { name: timestamp, type: datetime, format: iso8601, header: "Timestamp (UTC)" }
+      - { name: fill_id, type: string, header: "Fill ID", source: "fills.id" }
+      - { name: kind, type: string, header: "Kind", source: "fills.kind" }
+      - { name: symbol, type: string, header: "Symbol", source: "fills.sym" }
+      - { name: side, type: string, header: "Side", source: "fills.side" }
+      - { name: quantity, type: integer, format: ",.0f", header: "Qty", source: "fills.qty" }
+      - { name: price, type: float, format: "$#,##0.00", header: "Price", source: "fills.px" }
+      - { name: slip_ticks, type: integer, format: ",.0f", header: "Slip(t)", source: "fills.slipTicks" }
+      - { name: status, type: string, header: "Status", source: "fills.status" }
+      - { name: pnl, type: float, format: "+$#,##0.00;-$#,##0.00;$0.00", header: "P&L", source: "fills.pnl" }
+      - { name: reason, type: string, header: "Block Reason", source: "fills.reason", nullable: true }
+
+  # --------------------------------------------------------------------------
+  # Table 5: Options Desk (Context Tickets with Greeks)
+  # --------------------------------------------------------------------------
+  options_desk:
+    title: "Options Desk"
+    source: "optTickets"
+    description: "Options context tickets with Greeks context"
+    columns:
+      - { name: timestamp, type: datetime, format: iso8601, header: "Opened (UTC)", source: "optTickets.ts" }
+      - { name: ticket_id, type: string, header: "Ticket ID", source: "optTickets.id" }
+      - { name: status, type: string, header: "Status", source: "optTickets.status" }
+      - { name: symbol, type: string, header: "Symbol", source: "optTickets.sym" }
+      - { name: option_type, type: string, header: "Type", source: "optTickets.optKind" }
+      - { name: strike, type: float, format: "#,##0.00", header: "Strike", source: "optTickets.strike" }
+      - { name: expiry, type: string, header: "Expiry", source: "optTickets.expiry" }
+      - { name: quantity, type: integer, format: "+0;-0", header: "Qty", source: "optTickets.qty" }
+      - { name: entry_price, type: float, format: "$#,##0.00", header: "Entry Px", source: "optTickets.entryPx" }
+      - { name: entry_iv, type: float, format: ".1f%", header: "Entry IV", source: "optTickets.entryIV" }
+      - { name: close_price, type: float, format: "$#,##0.00", header: "Close Px", source: "optTickets.closePx", nullable: true }
+      - { name: pnl, type: float, format: "+$#,##0.00;-$#,##0.00;$0.00", header: "P&L", source: "optTickets.pnl", nullable: true }
+
+  # --------------------------------------------------------------------------
+  # Table 6: Volatility History (Persisted Snapshots)
+  # --------------------------------------------------------------------------
+  vol_history:
+    title: "Volatility History (Persisted)"
+    source: "volHistory"
+    description: "Persisted vol snapshots for cross-boot analysis"
+    columns:
+      - { name: timestamp, type: datetime, format: iso8601, header: "Timestamp (UTC)", source: "volSnap.ts" }
+      - { name: vix, type: float, format: ".2f", header: "VIX", source: "volSnap.vix" }
+      - { name: contango, type: float, format: ".2f%", header: "Contango", source: "volSnap.contango" }
+      - { name: multiplier, type: float, format: ".3f", header: "Multiplier", source: "volSnap.multiplier" }
+      - { name: pc_ratio, type: float, format: ".3f", header: "P/C Ratio", source: "volSnap.pcRatio" }
+      - { name: atm_iv, type: float, format: ".2f%", header: "ATM IV", source: "volSnap.atmIV" }
+      - { name: flip_strike, type: float, format: "#,##0.00", header: "Flip Strike", source: "volSnap.flipStrike" }
+      - { name: total_gex, type: float, format: "$#,##0", header: "Total GEX", source: "volSnap.totalGex" }
+      - { name: spot, type: float, format: "#,##0.00", header: "Spot", source: "volSnap.spot" }
+      - { name: score, type: float, format: ".1f", header: "Risk Score", source: "volSnap.score" }
+      - { name: regime, type: string, header: "Regime", source: "volSnap.regime" }
+      - { name: source, type: string, header: "Source", source: "volSnap.source" }
+
+  # --------------------------------------------------------------------------
+  # Table 7: Journal Entries (Trader Notes)
+  # --------------------------------------------------------------------------
+  journal:
+    title: "Trader Journal"
+    source: "journal"
+    description: "Trader notes with regime context"
+    columns:
+      - { name: timestamp, type: datetime, format: iso8601, header: "Timestamp (UTC)", source: "entries.createdAt" }
+      - { name: desk, type: integer, format: "Desk 00", header: "Desk", source: "entries.desk" }
+      - { name: desk_label, type: string, header: "Desk Label", source: "entries.deskLabel" }
+      - { name: regime, type: string, header: "Regime", source: "entries.regime" }
+      - { name: score, type: float, format: ".1f", header: "Risk Score", source: "entries.score" }
+      - { name: note, type: string, header: "Note", source: "entries.text" }
+
+  # --------------------------------------------------------------------------
+  # Table 8: Market State Summary
+  # --------------------------------------------------------------------------
+  market_state:
+    title: "Market State Summary"
+    source: "marketState"
+    description: "Current market state with all instruments"
+    columns:
+      - { name: timestamp, type: datetime, format: iso8601, header: "Timestamp (UTC)" }
+      - { name: crisis_active, type: boolean, format: "YES;NO", header: "Crisis", source: "marketState.crisis.active" }
+      - { name: crisis_phase, type: string, header: "Phase", source: "marketState.crisis.phase" }
+      - { name: crisis_intensity, type: float, format: ".2f", header: "Intensity", source: "marketState.crisis.intensity" }
+      - { name: tick_count, type: integer, format: ",.0f", header: "Tick Count", source: "marketState.tickCount" }
+      - { name: block_mr, type: boolean, format: "BLOCKED;OK", header: "Block MR", source: "marketState.interceptors.blockMR" }
+      - { name: reduce_size, type: boolean, format: "REDUCED;NORMAL", header: "Reduce Size", source: "marketState.interceptors.reduceSize" }
+      - { name: flatten, type: boolean, format: "FLAT;OK", header: "Flatten", source: "marketState.interceptors.flatten" }
+      - { name: contango_regime, type: string, header: "Contango Regime", source: "marketState.volComplex.regime" }
+      - { name: garch_vol, type: float, format: ".2f", header: "GARCH Vol", source: "marketState.garchS" }
+
+# ============================================================================
+# DATA SOURCE INTEGRATION POINTS
+# ============================================================================
+data_sources:
+  liquidity:
+    type: module
+    path: "@/lib/krupp/liquidityService"
+    state_path: "ms.liquidity"
+    description: "Central Bank Liquidity Service (1Hz tick)"
+    refresh_interval_ms: 1000
+
+  cboe:
+    type: store
+    store: "@/lib/london/store:useKrupp"
+    selector: "cboe"
+    description: "CBOE VIX term structure snapshot"
+    refresh: "on_update"
+
+  risk_metrics:
+    type: store
+    store: "@/lib/london/store:useKrupp"
+    selector: "metrics"
+    description: "Composite risk metrics from Hawkes/viscosity engine"
+    refresh: "on_update"
+
+  fills:
+    type: store
+    store: "@/lib/london/store:useKrupp"
+    selector: "fills"
+    description: "Execution ledger fills (in-memory ring buffer 60 max)"
+    refresh: "on_update"
+
+  opt_tickets:
+    type: store
+    store: "@/lib/london/store:useKrupp"
+    selector: "optTickets"
+    description: "Options desk tickets (in-memory ring buffer 24 max)"
+    refresh: "on_update"
+
+  vol_history:
+    type: store
+    store: "@/lib/london/store:useKrupp"
+    selector: "volHistory"
+    description: "Persisted vol history (720 row cap, 60s cadence)"
+    refresh: "on_update"
+
+  market_state:
+    type: module
+    path: "@/lib/krupp/engine"
+    state_path: "ms"
+    description: "Market state with all instruments + crisis regime"
+    refresh_interval_ms: 500
+
+  journal:
+    type: api
+    endpoint: "/api/journal"
+    params: { limit: 200 }
+    description: "Trader journal entries (SQLite-persisted)"
+
+  events:
+    type: api
+    endpoint: "/api/events"
+    params: { limit: 40 }
+    description: "Risk events audit trail (SQLite-persisted)"
+
+  policy:
+    type: store
+    store: "@/lib/london/store:useKrupp"
+    selector: "policy"
+    description: "Active risk policy (lock/scale/kill thresholds)"
+
+  volhistory_persisted:
+    type: api
+    endpoint: "/api/volhistory"
+    params: { limit: 720, format: "json" }
+    description: "Persisted vol history from SQLite (cross-boot)"
+
+# ============================================================================
+# FORMATTING SPECIFICATIONS
+# ============================================================================
+formatting:
+  csv:
+    delimiter: ","
+    quoting: rfc4180
+    header_row: true
+    timestamp_format: iso8601
+    null_representation: ""
+    decimal_separator: "."
+    line_ending: "LF"
+
+  excel:
+    sheet_name_max_length: 31
+    freeze_panes: true
+    auto_filter: true
+    column_widths: auto
+    styles:
+      header:
+        bold: true
+        bg_color: "1F2937"
+        font_color: "FFFFFF"
+      alternating_rows: true
+      zebra_color: "F3F4F6"
+      borders: true
+    number_formats:
+      currency: "$#,##0.00"
+      percent: "0.00%"
+      integer: "#,##0"
+      decimal: "#,##0.0000"
+
+  html:
+    doctype: html5
+    include_styles: true
+    responsive: true
+    print_media_query: true
+    table_classes:
+      - "min-w-full"
+      - "divide-y"
+      - "divide-gray-200"
+      - "border"
+      - "border-gray-300"
+    header_classes:
+      - "bg-gray-900"
+      - "text-white"
+      - "px-4"
+      - "py-3"
+      - "text-left"
+      - "text-xs"
+      - "uppercase"
+      - "tracking-wider"
+      - "font-semibold"
+    cell_classes:
+      - "px-4"
+      - "py-2"
+      - "whitespace-nowrap"
+      - "text-sm"
+      - "border"
+      - "border-gray-200"
+    conditional_formatting:
+      negative_values:
+        class: "text-rose-600"
+        prefix: "\u25BC "
+      positive_values:
+        class: "text-emerald-600"
+        prefix: "\u25B2 "
+      zero_values:
+        class: "text-gray-400"
+
+# ============================================================================
+# API ENDPOINTS
+# ============================================================================
+api:
+  export_endpoint:
+    method: GET
+    path: "/api/export/quant-analysis"
+    query_params:
+      - { name: format, type: string, enum: [csv, excel, html], required: true }
+      - { name: tables, type: string, description: "Comma-separated table names (default: all)" }
+      - { name: from, type: ISO8601, description: "Start of date range" }
+      - { name: to, type: ISO8601, description: "End of date range" }
+      - { name: limit, type: integer, default: 1000, description: "Max rows per table" }
+
+  preview_endpoint:
+    method: GET
+    path: "/api/export/quant-analysis/preview"
+    description: "Returns first 10 rows of each table for live preview"
+
+  status_endpoint:
+    method: GET
+    path: "/api/export/quant-analysis/status"
+    description: "Check export job status (for large async exports)"
+
+# ============================================================================
+# DOWNLOAD/PRINT UI COMPONENTS
+# ============================================================================
+ui:
+  button:
+    variant: secondary
+    icon: Download
+    label: "Export"
+    tooltip: "Download multi-dataset analysis report"
+    position: "header_actions"
+
+  dropdown_options:
+    - { format: csv, label: "CSV (Spreadsheet)", icon: FileSpreadsheet, mime_type: "text/csv", description: "Comma-separated values" }
+    - { format: excel, label: "Excel (.xlsx)", icon: FileSpreadsheet, mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", description: "Multi-sheet workbook" }
+    - { format: html, label: "HTML (Print)", icon: Printer, mime_type: "text/html", description: "Browser-printable formatted table" }
+
+  modal:
+    title: "Export Quant Analysis Report"
+    description: "Select format and configure options"
+    sections:
+      - name: format
+        label: "Output Format"
+        type: radio_group
+        options: [csv, excel, html]
+      - name: tables
+        label: "Include Tables"
+        type: checkbox_group
+        options: [liquidity, volatility, risk_metrics, execution_ledger, options_desk, vol_history, journal, market_state]
+        default: all
+      - name: date_range
+        label: "Date Range"
+        type: select
+        presets: [{ label: "Today", value: "today" }, { label: "Last 7 Days", value: "7d" }, { label: "Last 30 Days", value: "30d" }, { label: "All Time", value: "all" }]
+        default: "all"
+
+# ============================================================================
+# INTEGRATION WITH EXISTING CODE
+# ============================================================================
+integration:
+  existing_components:
+    - { name: PrintReport, path: "@/components/london/PrintReport", relationship: sibling, description: "Existing browser-print PDF - new export complements it with data-focused output" }
+    - { name: Shell, path: "@/components/krupp/Shell", description: "Main shell - export button integrates here", injection_point: "header_actions" }
+    - { name: StatusBar, path: "@/components/london/StatusBar", description: "Status bar - show export progress" }
+
+  existing_hooks:
+    - { name: useKruppFeed, path: "@/lib/london/useKruppFeed", description: "Feed subscription hook" }
+
+  existing_stores:
+    - { name: useKrupp, path: "@/lib/london/store", description: "Main Zustand store - all desk state" }
+
+  existing_services:
+    - { name: ensureLiquidity, path: "@/lib/krupp/liquidityService", description: "Liquidity tick service" }
+
+  existing_apis:
+    - { name: ledger, path: "/api/ledger", description: "Ledger persistence API" }
+    - { name: journal, path: "/api/journal", description: "Journal persistence API" }
+    - { name: events, path: "/api/events", description: "Risk events API" }
+    - { name: volhistory, path: "/api/volhistory", description: "Volatility history API" }
+
+# ============================================================================
+# VALIDATION & ERROR HANDLING
+# ============================================================================
+validation:
+  required_tables: [liquidity, volatility, risk_metrics]
+  optional_tables: [execution_ledger, options_desk, vol_history, journal, market_state]
+  max_rows_per_table: 50000
+  max_export_size_mb: 50
+  error_responses:
+    - { code: "NO_DATA", message: "No data available for the selected date range" }
+    - { code: "TABLE_NOT_FOUND", message: "Requested table does not exist" }
+    - { code: "EXPORT_TOO_LARGE", message: "Export exceeds size limit - try a narrower date range" }
+    - { code: "API_ERROR", message: "Failed to fetch data - please try again" }
+
+# ============================================================================
+# PERFORMANCE CONSIDERATIONS
+# ============================================================================
+performance:
+  streaming: true
+  chunk_size: 1000
+  parallel_fetch: true
+  cache_ttl_seconds: 60
+  optimizations:
+    - "Use cursor-based pagination for large tables"
+    - "Stream CSV response instead of building in memory"
+    - "Cache frequently accessed data in memory"
+    - "Lazy load vol_history (only fetch when selected)"
+
+# ============================================================================
+# SECURITY
+# ============================================================================
+security:
+  rate_limit: { requests_per_minute: 10, burst: 3 }
+  authentication: { required: false }
+  sanitization:
+    - "Escape all user-provided text in CSV (RFC-4180 quoting)"
+    - "Validate all numeric inputs"
+    - "Limit string lengths per schema"
+    - "Sniff & reject non-UTF-8 input"
